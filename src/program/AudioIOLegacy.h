@@ -3,14 +3,9 @@
 #include "IAudioIO.h"
 #include "SampleFormat.h"
 
-//#include <Audioclient.h>
-//#include <Audiopolicy.h>
-//#include <mmdeviceapi.h>
 #include <windows.h>
-//#include <mmeapi.h>
 #include <mmsystem.h>
 #pragma comment(lib, "winmm")
-//#pragma comment(lib,"libwinmm")
 
 class AudioIOLegacy : public IAudioIO {
 
@@ -27,6 +22,10 @@ public:
 
 	double* buffer;
 
+	int frameSize;
+	int framesInBuffer;
+
+	// naming...
 	int bufferLen;
 	int bufferCount;
 	int bufferIdx;
@@ -35,6 +34,8 @@ public:
 	int rightChannelIn;
 	int leftChannelOut;
 	int rightChannelOut;
+
+	int reset;
 
 	AudioIOLegacy();
 
