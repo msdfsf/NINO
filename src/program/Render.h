@@ -49,6 +49,7 @@ namespace Render {
 	int init(HWND hWnd, int width, int height);
 
 	void render(HDC hdc);
+	void render(HDC hdc, int width, int height);
 
 	void redraw();
 	void redraw(HDC hdc);
