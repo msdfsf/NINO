@@ -42,7 +42,7 @@ SelectMenu::SelectMenu(char** items, int itemCount) : SelectMenu() {
 }
 
 void SelectMenu::setItemHeight() {
-	
+
 	const double marginCoef = 0.5;
 	const int margin = this->fontSize * marginCoef;
 
@@ -68,7 +68,7 @@ void SelectMenu::draw() {
 	const int height = this->height - this->borderTopWidth - this->borderBottomWidth - this->paddingTop - this->paddingBottom;
 
 	const int step = itemHeight + itemDelimiterHeight;
-	
+
 	const int startIdx = scrollOffsetY / step;
 	int idx = startIdx;
 
@@ -86,7 +86,8 @@ void SelectMenu::draw() {
 		Render::color = backColor;
 		Render::fillRect(x, startY, width, itemHeight + y - startY);
 
-	} else {
+	}
+	else {
 
 		frontColor = this->color;
 		backColor = this->backgroundColor;
@@ -107,7 +108,7 @@ void SelectMenu::draw() {
 		0,
 		startY - y,
 		width - itemPadding,
-		itemHeight 
+		itemHeight
 	);
 
 	if (itemCount < 2) return;
@@ -117,7 +118,8 @@ void SelectMenu::draw() {
 	Render::color = Color::WHITE;
 	if (startY > delY) {
 		Render::fillRect(x, startY, width, itemDelimiterHeight - (startY - delY));
-	} else {
+	}
+	else {
 		Render::fillRect(x, delY, width, itemDelimiterHeight);
 	}
 
@@ -125,7 +127,7 @@ void SelectMenu::draw() {
 	y += step;
 
 	for (y; y < startY + height - step && idx < itemCount - 1; y += step) {
-	
+
 		if (hoverIdx == idx) {
 
 			frontColor = this->hoverFrontColor;
@@ -134,7 +136,8 @@ void SelectMenu::draw() {
 			Render::color = backColor;
 			Render::fillRect(x, y, width, itemHeight);
 
-		} else {
+		}
+		else {
 
 			frontColor = this->color;
 			backColor = this->backgroundColor;
@@ -171,7 +174,8 @@ void SelectMenu::draw() {
 		Render::color = backColor;
 		Render::fillRect(x, y, width, (remainingY < itemHeight) ? remainingY : itemHeight);
 
-	} else {
+	}
+	else {
 
 		frontColor = this->color;
 		backColor = this->backgroundColor;
@@ -204,7 +208,7 @@ void SelectMenu::draw() {
 
 void scrollWrapper(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
 
-	SelectMenu* src = (SelectMenu*) source;
+	SelectMenu* src = (SelectMenu*)source;
 	src->scroll(paramA, paramB);
 
 }
@@ -218,10 +222,11 @@ void SelectMenu::scroll(CTRL_PARAM paramA, CTRL_PARAM paramB) {
 
 	int pixelsToScroll = wheelDistance * Control::SCROLL_STEP;
 	scrollOffsetY -= pixelsToScroll;
-	
+
 	if (scrollOffsetY < minOffset) {
 		scrollOffsetY = minOffset;
-	} else if (scrollOffsetY > maxOffset) {
+	}
+	else if (scrollOffsetY > maxOffset) {
 		scrollOffsetY = maxOffset;
 	};
 
@@ -249,21 +254,23 @@ void SelectMenu::mouseOver(CTRL_PARAM paramA, CTRL_PARAM paramB) {
 
 	const int mouseX = realMouseX - startX;
 	const int mouseY = realMouseY - startY;
-	
+
 	const int step = itemHeight + itemDelimiterHeight;
-	
+
 	const int oldHoverIdx = hoverIdx;
 
 	if (mouseY < 0 || mouseY > height) {
 		hoverIdx = -1;
-	} else if ((scrollOffsetY + mouseY) <= step * itemCount) {
+	}
+	else if ((scrollOffsetY + mouseY) <= step * itemCount) {
 		cursor = Cursor::POINTER;
 		hoverIdx = (scrollOffsetY + mouseY) / step;
-	} else {
+	}
+	else {
 		cursor = Cursor::DEFAULT;
 		hoverIdx = -1;
 	}
-		//hoverIdx = (scrollOffsetY + mouseY) / step;//(scrollOffsetY + (scrollOffsetY % step) + mouseY) / step;//((scrollOffsetY % step) + mouseY) / step;
+	//hoverIdx = (scrollOffsetY + mouseY) / step;//(scrollOffsetY + (scrollOffsetY % step) + mouseY) / step;//((scrollOffsetY % step) + mouseY) / step;
 
 	if (oldHoverIdx != hoverIdx)
 		Render::redraw();
@@ -271,7 +278,7 @@ void SelectMenu::mouseOver(CTRL_PARAM paramA, CTRL_PARAM paramB) {
 }
 
 int SelectMenu::getItemCount() {
-	
+
 	return itemCount;
 
 }
@@ -283,7 +290,7 @@ int SelectMenu::getIdealHeight() {
 }
 
 int itemcmp(SelectMenu::Item* itemA, SelectMenu::Item* itemB) {
-	
+
 	int lenA = itemA->textLen;
 	int lenB = itemB->textLen;
 
@@ -323,10 +330,10 @@ void strMerge(SelectMenu::Item** array, int left, int right, int pivot) {
 	int leftLen = pivot - left + 1;
 	int rightLen = right - pivot;
 
-	SelectMenu::Item** leftArr = (SelectMenu::Item**) malloc(sizeof(SelectMenu::Item*) * leftLen);
+	SelectMenu::Item** leftArr = (SelectMenu::Item**)malloc(sizeof(SelectMenu::Item*) * leftLen);
 	if (leftArr == NULL) return; // have to handle it better, but ok for now
 
-	SelectMenu::Item** rightArr = (SelectMenu::Item**) malloc(sizeof(SelectMenu::Item*) * rightLen);
+	SelectMenu::Item** rightArr = (SelectMenu::Item**)malloc(sizeof(SelectMenu::Item*) * rightLen);
 	if (rightArr == NULL) return;
 
 	// may rewrite to have first for to fill both arrays and then second to 
@@ -350,7 +357,8 @@ void strMerge(SelectMenu::Item** array, int left, int right, int pivot) {
 			array[arrIdx] = leftArr[i];
 			i++;
 
-		} else {
+		}
+		else {
 			// rightArr[j] is linguistically first
 
 			array[arrIdx] = rightArr[j];
@@ -369,7 +377,8 @@ void strMerge(SelectMenu::Item** array, int left, int right, int pivot) {
 			array[arrIdx] = rightArr[j];
 		}
 
-	} else if (j >= rightLen) {
+	}
+	else if (j >= rightLen) {
 		// leftArr may have something more
 
 		for (i; i < leftLen; i++, arrIdx++) {
@@ -388,11 +397,14 @@ void SelectMenu::freeItems() {
 	SelectMenu::Item** items = this->items;
 	const int count = this->itemCount;
 
+	if (count < 1) return;
+
 	for (int i = 0; i < count; i++) {
 		free(items[i]);
 	}
-	
+
 	free(items);
+	this->items = NULL;
 
 }
 
@@ -401,12 +413,12 @@ void SelectMenu::insertItems(char** items, int itemCount) {
 	freeItems();
 
 	this->itemCount = itemCount;
-	this->items = (SelectMenu::Item**) malloc(itemCount * sizeof(SelectMenu::Item*));
+	this->items = (SelectMenu::Item**)malloc(itemCount * sizeof(SelectMenu::Item*));
 	if (this->items == NULL) return; // have to handele it better, but who cares
 
 	for (int i = 0; i < itemCount; i++) {
 
-		this->items[i] = (SelectMenu::Item*) malloc(sizeof(SelectMenu::Item));
+		this->items[i] = (SelectMenu::Item*)malloc(sizeof(SelectMenu::Item));
 		if (this->items[i] == NULL) return;
 
 		this->items[i]->id = i;
@@ -421,19 +433,17 @@ void SelectMenu::insertItems(char** items, int itemCount) {
 
 void SelectMenu::addItems(char** items, int itemCount) {
 
-	SelectMenu::Item** oldItems = this->items;
 	const int oldItemCount = this->itemCount;
 
 	this->itemCount += itemCount;
-	this->items = (SelectMenu::Item**) realloc(this->items, this->itemCount * sizeof(SelectMenu::Item*));
-	if (this->items == NULL) {
+	SelectMenu::Item** tmp = (SelectMenu::Item**)realloc(this->items, this->itemCount * sizeof(SelectMenu::Item*));
+	if (tmp == NULL) {
 
 		this->itemCount = oldItemCount;
-		this->items = oldItems;
-		
 		return;
-	
+
 	}
+	this->items = tmp;
 
 	const int count = this->itemCount;
 	for (int i = oldItemCount; i < count; i++) {
@@ -441,7 +451,7 @@ void SelectMenu::addItems(char** items, int itemCount) {
 		char* item = items[i - oldItemCount];
 		SelectMenu::Item* thisItem = this->items[i];
 
-		thisItem = (SelectMenu::Item*) malloc(sizeof(SelectMenu::Item));
+		thisItem = (SelectMenu::Item*)malloc(sizeof(SelectMenu::Item));
 		if (thisItem == NULL) {
 			// maybe add realloc, but it could fail, so it will be to complicated, dunno...
 
@@ -521,19 +531,17 @@ int SelectMenu::getPrimeIndex() {
 
 void SelectMenu::addItem(char* item, const int textLen) {
 
-	SelectMenu::Item** oldItems = this->items;
 	const int oldItemCount = this->itemCount;
 
 	this->itemCount++;
-	this->items = (SelectMenu::Item**)realloc(this->items, this->itemCount * sizeof(SelectMenu::Item*));
-	if (this->items == NULL) {
+	SelectMenu::Item** tmp = (SelectMenu::Item**)realloc(this->items, this->itemCount * sizeof(SelectMenu::Item*));
+	if (tmp == NULL) {
 
 		this->itemCount = oldItemCount;
-		this->items = oldItems;
-
 		return;
 
 	}
+	this->items = tmp;
 
 	SelectMenu::Item* thisItem = this->items[oldItemCount];
 
