@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "AudioIOFile.h"
 #include "WAVE.c"
@@ -108,6 +109,15 @@ int load(AudioIOFile* const driver) {
 		strcpy(flname, Config::inFileName);
 		strcpy(flname + strlen(Config::inFileName), WAVE_FILE_EXT);
 
+		FILE* fl = fopen(flname, "rb");
+		if (!fl) {
+			const int offset = strlen(flname);
+			flname[offset] = 'E';
+			flname[offset + 1] = '\0';
+		} else {
+			fclose(fl);
+		}
+
 		const int len = WAVEOpenFile(flname, (WAVE**) &driver->inData);
 		if (len < 0) {
 			return 1;
@@ -174,7 +184,7 @@ void AudioIOFile::iProcessWAVE(
 
 			for (int i = 0; i < buffSize; i++) {
 				const int off = stepIn * (offset + i);
-				inBuff[i] = ((double) (inData[off] + OFFSET) + (double) (inData[off + 1] + OFFSET)) / (double)IN_MAX;
+				inBuff[i] = ((double) (inData[off] + OFFSET) + (double) (inData[off + 1] + OFFSET)) / (double) IN_MAX;
 			}
 
 		} else if (!inLeft && !inRight) {
@@ -232,7 +242,7 @@ void AudioIOFile::iProcessWAVE(
 
 	this->processInput((void*) inBuff, (void*) outBuff, buffSize);
 
-	BASIC_OUTPUT(outBuff, outData, buffSize, OUT_MAX, outLeft, outRight);
+	BASIC_OUTPUT(outBuff, outData, remLen, OUT_MAX, outLeft, outRight);
 
 }
 
@@ -325,7 +335,7 @@ void AudioIOFile::fProcessWAVE(
 
 	this->processInput((void*)inBuff, (void*)outBuff, buffSize);
 
-	BASIC_OUTPUT(outBuff, outData, buffSize, OUT_MAX, outLeft, outRight);
+	BASIC_OUTPUT(outBuff, outData, remLen, OUT_MAX, outLeft, outRight);
 
 }
 
