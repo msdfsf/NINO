@@ -6,10 +6,17 @@
 
 namespace Config {
 
-	const std::string fileName = "C:/Users/JustAnUser/source/repos/Test_BC/Test_BC/config.cfg";
+	const std::string fileName = "./config.cfg";
 
 	extern int windowWidth;
 	extern int windowHeight;
+
+	extern int renderWidth;
+	extern int renderHeight;
+
+	extern int windowResize;
+	extern int windowMaximize;
+	extern int fullScreen;
 
 	extern AudioDriver::Driver audioDriver;
 
@@ -27,6 +34,13 @@ namespace Config {
 
 	void setWindowWidth(int width);
 	void setWindowHeight(int height);
+
+	void setRenderWidth(int width);
+	void setRenderHeight(int height);
+
+	void setWindowResize(int resize);
+	void setWindowMaximize(int maximize);
+	void setWindowFullScreen(int fullScreen);
 
 	void setAudioDriver(AudioDriver::Driver driver);
 	void setAudioDevice(int deviceId);
