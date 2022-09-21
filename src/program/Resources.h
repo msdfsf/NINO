@@ -18,6 +18,9 @@ namespace Resources {
 	extern Render::BitmapEx* const powerButtonOn;
 	extern Render::BitmapEx* const powerButtonOff;
 	
+	extern Render::BitmapEx* const leftChannel;
+	extern Render::BitmapEx* const rightChannel;
+
 	extern Render::BitmapEx* const plus;
 	extern Render::BitmapEx* const plusInv;
 	extern Render::BitmapEx* const minus;
