@@ -45,14 +45,14 @@ void process(void* inBuffer, void* outBuffer, int bufferLength, void* space) {
 
 IPlugin* getPlugin() {
 	
-	IPlugin* plugin = (IPlugin*) malloc(sizeof(IPlugin));
+	IPlugin* const plugin = (IPlugin*) malloc(sizeof(IPlugin));
 	if (plugin == NULL) return NULL;
 
-	PluginUIHandler* uihnd = buildPluginUIHandler();
+	PluginUIHandler* const uihnd = buildPluginUIHandler();
 	uihnd->controls[0]->backgroundColor = 0xFFEA6363;
 	uihnd->controls[0]->fillType = PFP_DOTS;
 
-	PluginControl* gainKnob = addControl(uihnd, PCT_KNOB);
+	PluginControl* const gainKnob = addControl(uihnd, PCT_KNOB);
 	gainKnob->MAX_VALUE = 30.0;
 	gainKnob->value = DF_GAIN_COEF;
 	gainKnob->color = 0xFF000000;
