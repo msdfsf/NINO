@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "Plugin.h"
 #include "Render.h"
@@ -9,7 +10,7 @@
 #include "ToolTip.h";
 #include "Color.h";
 #include "AudioDriver.h"
-#include "TimedEventsDriver.h"
+#include "TickEventsDriver.h"
 
 #include "TheSimpleTheBadAndTheUglyDSPLibrary.h"
 
@@ -29,11 +30,14 @@ namespace Plugin {
 	const int TIME_BETWEEN_FRAMES = 1000 / TARGET_FPS; // millis
 
 	const double MAX_PLOT_FLOAT_VALUE = 1.3; // max amplitude of signal
-	const double MAX_PLOT_DB_VALUE = 50; // means under zero
+	const double MAX_PLOT_DB_VALUE = 120; // means under zero
 	const double MAX_PLOT_FREQ = 4000;
 
 	const int DFT_MTX_LEN = DFT_MTX_MAX_LEN;
 	fComplex DFT_MATRIX[DFT_MTX_LEN];
+
+	double fftInBuffer[DFT_MTX_LEN];
+	double fftOutBuffer[DFT_MTX_LEN];
 
 	int lastMouseX = 0;
 	int lastMouseY = 0;
@@ -957,13 +961,13 @@ namespace Plugin {
 					}
 
 					// computing fft
-					double fftInBuffer[DFT_MTX_LEN];
-					double fftOutBuffer[DFT_MTX_LEN];
+					//double fftInBuffer[DFT_MTX_LEN];
+					//double fftOutBuffer[DFT_MTX_LEN];
 
 					const int minLen = (samplesToFFT < DFT_MTX_LEN) ? samplesToFFT : DFT_MTX_LEN;
 					int i = 0;
 					for (; i < minLen; i++) {
-						fftInBuffer[i] = (endIdx - i) >= 0 ? buffer[endIdx - i] : buffer[lenSamples - i];
+						fftInBuffer[i] = (endIdx - i) >= 0 ? buffer[endIdx - i] : buffer[lenSamples + (endIdx - i) - 1];
 					}
 
 					for (; i < DFT_MTX_LEN; i++) {
@@ -973,14 +977,18 @@ namespace Plugin {
 					fftFloat(fftInBuffer, fftOutBuffer, DFT_MATRIX, DFT_MTX_LEN);
 
 					// pick only part we want to observe
-					const int samplesToProcess = (sampleRate > MAX_PLOT_FREQ) ? floor(MAX_PLOT_FREQ / sampleRate * (DFT_MTX_LEN / 2)) : (DFT_MTX_LEN / 2);
+					const int samplesToProcess = (sampleRate > MAX_PLOT_FREQ) ? floor(MAX_PLOT_FREQ / sampleRate * DFT_MTX_LEN) : DFT_MTX_LEN;
 
 					// convert to db
-					fftOutBuffer[0] = fftOutBuffer[0];
+					if (fftOutBuffer[0] < 0.00001) {
+						fftOutBuffer[0] = 0;
+					} else {
+						fftOutBuffer[0] = 20 * log10(fftOutBuffer[0] / DFT_MTX_LEN) + MAX_PLOT_DB_VALUE;
+					}
 					for (int i = 2; i < 2 * samplesToProcess; i += 2) {
 						
 						const double abs = sqrt(fftOutBuffer[i] * fftOutBuffer[i] + fftOutBuffer[i + 1] * fftOutBuffer[i + 1]);
-
+						fftOutBuffer[i / 2] = abs;
 						if (abs < 0.00001) {
 							fftOutBuffer[i / 2] = 0;
 						} else {
@@ -1029,10 +1037,11 @@ namespace Plugin {
 							double yValue = sum * valueCoef / len;
 
 							if (yValue > maxHeight) yValue = maxHeight;
-							const int lineY = middleY - yValue;
+							else if (yValue < 0) continue;
 
 							// overflow!!
-							Render::drawLineY(startLineX + i, lineY, 2 * yValue);
+							const int lineY = topY + (yLen - yValue);
+							Render::drawLineY(startLineX + i, lineY - overflowTop, yValue);
 
 						}
 
@@ -1049,7 +1058,7 @@ namespace Plugin {
 
 	}
 
-	void drawSignalViewer(Control* ctrl) {
+	void drawSignalViewer(void* ctrl) {
 
 		Render::redraw();
 	
@@ -1118,11 +1127,13 @@ namespace Plugin {
 					pixels[i] = 0xFF000000;
 				}
 
-				TimedEventsDriver::add(
-					(Control*) ctrl,
-					&drawSignalViewer,
-					TIME_BETWEEN_FRAMES
+				TickEventsDriver::Node* node = TickEventsDriver::add(
+					NULL,
+					NULL,
+					1
 				);
+				node->type = TickEventsDriver::TET_RENDER;
+				node->idleSignal = (void*) &(uihnd->visible);
 
 				break;
 			
@@ -1142,11 +1153,12 @@ namespace Plugin {
 				// not fancy
 				getDFTMatrix(DFT_MATRIX, DFT_MTX_LEN);
 
-				TimedEventsDriver::add(
-					(Control*) ctrl,
-					&drawSignalViewer,
-					TIME_BETWEEN_FRAMES
+				TickEventsDriver::Node* node = TickEventsDriver::add(
+					NULL,
+					NULL,
+					1
 				);
+				node->type = TickEventsDriver::TET_RENDER;
 
 				break;
 			
