@@ -19,10 +19,7 @@ class DropDownSelectMenu : public Control {
 
 		void mouseClickCallback(CTRL_PARAM paramA, CTRL_PARAM paramB);
 
-	private:
-
 		int opened;
-
 		int selected;
 
 		SelectMenu* selectMenu;
