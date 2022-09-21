@@ -68,8 +68,9 @@ class AudioIOWASAPI : IAudioIO {
 		int rightChannelIn = 0;
 		int rightChannelOut = 0;
 
-		double** dataBuffers = NULL;
-		int dataBufferCount = 0;
+		double* dataBuffers = NULL;
+		int dataBufferInCount = 0;
+		int dataBufferOutCount = 0;
 		int dataBufferLength = 0;
 		int dataBufferIndex = 0;
 
@@ -95,7 +96,7 @@ class AudioIOWASAPI : IAudioIO {
 
 		HRESULT error;
 
-		int allocDataBuffers(int count, int length);
+		int allocDataBuffers(int inCount, int outCount, int length);
 		void freeDataBuffers();
 
 		HRESULT initRender(
