@@ -1,0 +1,771 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>PD_Project</title>
+	
+    <style>
+		
+		@import url('https://fonts.googleapis.com/css2?family=Epilogue:wght@400;900&family=IBM+Plex+Sans+Arabic&display=swap');
+		pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#aaa;background:#000}.hljs-emphasis,.hljs-strong{color:#a8a8a2}.hljs-bullet,.hljs-literal,.hljs-number,.hljs-quote,.hljs-regexp{color:#f5f}.hljs-code .hljs-selector-class{color:#aaf}.hljs-emphasis,.hljs-stronge,.hljs-type{font-style:italic}.hljs-function,.hljs-keyword,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-symbol{color:#ff5}.hljs-subst,.hljs-tag,.hljs-title{color:#aaa}.hljs-attribute{color:#f55}.hljs-class .hljs-title,.hljs-params,.hljs-title.class_,.hljs-variable{color:#88f}.hljs-addition,.hljs-built_in,.hljs-link,.hljs-selector-attr,.hljs-selector-id,.hljs-selector-pseudo,.hljs-string,.hljs-template-tag,.hljs-template-variable,.hljs-type{color:#f5f}.hljs-comment,.hljs-deletion,.hljs-meta{color:#5ff}
+		
+        :root {
+            --color_back: black;
+            --color_front: white;
+			--color_highlight: #f5f;
+        }
+
+        body {
+			font-family: 'Epilogue', sans-serif;
+			font-family: 'IBM Plex Sans Arabic', sans-serif;
+            background-color: var(--color_back);
+            color: var(--color_front);
+        }
+		
+		h2 {
+			font-size: 40px;
+			border-bottom: solid 2px;
+		}
+		
+		h3 {
+			font-size: 20px;
+			border-bottom: solid 1px;
+		}
+
+		.leftMenu {
+			width: 250px;
+			box-sizing: border-box;
+			position: sticky;
+			top: 20px;
+			left: 0px;
+			float:left;
+		}
+		
+        .mainflow {
+			top: 0px;
+			margin-left: 280px;
+			max-width: 700px;
+			possition: relative;
+		}
+		
+		p > code.hljs { 
+			display: inline; 
+		}
+		
+		.leftMenuTitle {
+			display: block;
+			margin-block-start: 1.33em;
+			margin-block-end: 1.33em;
+			margin-inline-start: 0px;
+			margin-inline-end: 0px;
+			font-weight: bold;
+			cursor: pointer;
+		}
+		
+		.leftMenuTitle:hover {
+			color: var(--color_highlight);
+		}
+		
+		.leftMenuList {
+			list-style-type:none;
+			padding: 2px;
+			margin: 0;
+		}
+		
+		.leftMenuListItem {
+			margin: 2px;
+			cursor: pointer;
+		}
+		
+		.leftMenuListItem:hover {
+			color: var(--color_highlight);
+		}
+		
+		a {
+			color: inherit;
+			text-decoration: inherit;
+		}
+		
+		.note, .warning, .error {
+			display: block;
+			margin: 2%;
+			padding: 2%;
+			border-style: solid;
+			border-width: 2px;
+			border-color: #88f;
+			background-color: #6666ff;
+			border-radius: 10px;
+			color: white;
+			line-height: 25px;
+			position: relative;
+		}
+		
+		.noteIcon, .warningIcon, .errorIcon {
+			filter: invert(55%) sepia(12%) saturate(5373%) hue-rotate(211deg) brightness(101%) contrast(103%);
+			max-height: 100%;
+			height: 25px;
+			vertical-align: bottom;
+			position: relative;
+			display: inline-block;
+			margin-right : 2%;
+		}
+		
+		.error {
+			border-color: #ff6666;
+			background-color: #ff1c1c;
+		}
+		
+		.errorIcon {
+			filter: invert(53%) sepia(20%) saturate(1786%) hue-rotate(314deg) brightness(105%) contrast(103%);
+		}
+		
+		.warning {
+			border-color: #ffdc9c;
+			background-color: #ffa600;
+		}
+		
+		.warningIcon {
+			filter: invert(92%) sepia(18%) saturate(1045%) hue-rotate(325deg) brightness(101%) contrast(103%);
+		}
+	
+
+    </style>
+	
+</head>
+<body>
+    <h1>Audio Plugin Interface</h1>
+	
+	<div class="leftMenu">
+		<div class="leftMenuTitle"><a href="#introduction">Introduction</a></div>
+		
+		<div class="leftMenuTitle"><a href="#tutorial">Tutorial</a></div>
+		<ul class="leftMenuList">
+			<li class="leftMenuListItem"><a href="#tutorial_1">Implement DLL interface function</a></li>
+			<li class="leftMenuListItem"><a href="#tutorial_2">Manage initialization and data</a></li>
+			<li class="leftMenuListItem"><a href="#tutorial_3">Implemnt controls callbacks</a></li>
+			<li class="leftMenuListItem"><a href="#tutorial_4">Implement process function</a></li>
+		</ul>
+		
+		
+		<div class="leftMenuTitle"><a href="#documentation">API Reference</a></div>
+		<ul class="leftMenuList">
+			<li class="leftMenuListItem"><a href="#iplugin">IPlugin</a></li>
+			<li class="leftMenuListItem"><a href="#iplugininfo">IPluginInfo</a></li>
+			<li class="leftMenuListItem"><a href="#pluginuihandler">PluginUIHandler</a></li>
+			<li class="leftMenuListItem"><a href="#plugincontrol">PluginControl</a></li>
+			<li class="leftMenuListItem"><a href="#plotinfo">PlotInfo</a></li>
+			<li class="leftMenuListItem"><a href="#plugincontroltype">PluginControlType</a></li>
+			<li class="leftMenuListItem"><a href="#pluginfillpattern">PluginFillPattern</a></li>
+			<li class="leftMenuListItem"><a href="#ctrl_param">CTRL_PARAM</a></li>
+		</ul>
+	</div><div class="mainflow">
+	
+		<section>
+			<h2 id="introduction">Introduction</h2>
+			<p>This paper describes the audio plugin interface for the program named NINO (No Input, No Output). The interface is 'powered by' C language which is used for creation dll files, the representation of plugins themselves. So one can write plugin with any language/tool if it aligns interface/memory, but recommended way is C, as its simple and therefore very compatible way across all different compilers.</p>			
+			<script>buildWarning("The author may be wrong, so don't take any considerations as it is, and go your way, if you think its better!");</script><div class="warning"><svg class="warningIcon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 0 24 24" width="25px" fill="#000000"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"></path></svg>The author may be wrong, so don't take any considerations as it is, and go your way, if you think its better!</div>
+		</section>
+		
+		<section>
+			<h2 id="tutorial">Tutorial</h2>
+			<p>Here will be shown implementation of the Gain Booster plugin. It is a simple one, so there will be no hard logic that will distruct us from the general plugin process creation. There is an easier way to implement this, but we will implement it in the way we believe, the general plugin has to be implemented in any case.</p>
+			
+			<p>This process can be divided into basic steps that basically correspond to all functions from the interface. The order can be omitted.</p>
+			<ul>
+				<li>Implement DLL interface function</li>
+				<li>Manage initialization and data</li>
+				<li>Implemnt controls callbacks</li>
+				<li>Implement process function</li>
+			</ul>
+			
+			<h3 id="tutorial_1">Implement DLL interface function</h3>
+			<p>The DLL Interface function is the one and only function that provides each plugin file. It's job is to allocate plugin handler <code><span class="hljs-type">IPlugin</span></code> and return its pointer.</p>
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-type">IPlugin</span>* <span class="hljs-title function_">getPlugin</span><span class="hljs-params">()</span>
+			</code></pre>
+			
+			<p>Inside the function we firstly allocate the <code><span class="hljs-type">IPlugin</span></code> structure that will represent our plugin</p>
+			
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-type">IPlugin</span>* plugin = (<span class="hljs-type">IPlugin</span>*) <span class="hljs-built_in">malloc</span>(<span class="hljs-keyword">sizeof</span>(<span class="hljs-type">IPlugin</span>));
+<span class="hljs-keyword">if</span> (!plugin) <span class="hljs-keyword">return</span> <span class="hljs-literal">NULL</span>;
+			</code></pre>
+			
+			<p>Then we have to allocate a UI handler, we use the included function</p>
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-type">PluginUIHandler</span>* <span class="hljs-title function_">buildPluginUIHandler</span><span class="hljs-params">()</span>
+			</code></pre>
+			<p>It comes with the interfacea and will do everything for us. We set only background color and its type.</p>
+			<!-- NOTE color format -->
+			
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-type">PluginUIHandler</span>* uihnd = buildPluginUIHandler();
+uihnd-&gt;controls[<span class="hljs-number">0</span>]-&gt;backgroundColor = <span class="hljs-number">0xFFEA6363</span>;
+uihnd-&gt;controls[<span class="hljs-number">0</span>]-&gt;fillType = PFP_DOTS;
+			</code></pre>
+			
+			<script>buildNote('Note, colors are in ARGB fromat.')</script><div class="note"><svg class="noteIcon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 0 24 24" width="25px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"></path><path d="M8 16h8v2H8zm0-4h8v2H8zm6-10H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"></path></svg>Note, colors are in ARGB fromat.</div>
+			
+			<p>Now we create knob control to control our gain. We use another function that comes with the interface
+			</p><pre><code class="lang-c hljs language-c">
+<span class="hljs-type">PluginControl</span>* <span class="hljs-title function_">addControl</span><span class="hljs-params">(<span class="hljs-type">PluginUIHandler</span>* uihnd, PluginControlType controlType)</span>
+			</code></pre>
+			<p>We pass pointer to previously created ui handler and the type of the control we need, in our case its PCT_KNOB. We also set some custom attributes and <a href="#tutorial_3">callback functions</a>.</p>
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-type">PluginControl</span>* gainKnob = addControl(uihnd, PCT_KNOB);
+gainKnob-&gt;MAX_VALUE = <span class="hljs-number">30.0</span>;
+gainKnob-&gt;value = DF_GAIN_COEF;
+gainKnob-&gt;color = <span class="hljs-number">0xFF000000</span>;
+gainKnob-&gt;label = <span class="hljs-string">"Gain"</span>;
+gainKnob-&gt;eChange = &amp;gainChange;
+			</code></pre>
+		
+			<p>The last thing we have to do here is to set plugin name (its wide char), assign pointer to UI handler and assign function pointers, which implementations will be shown in the next steps.</p>
+			<pre><code class="lang-c hljs language-c">
+plugin-&gt;name = <span class="hljs-string">L"Gain Booster"</span>;
+plugin-&gt;uihnd = uihnd;
+plugin-&gt;process = &amp;process;
+plugin-&gt;init = &amp;init;
+plugin-&gt;free = <span class="hljs-literal">NULL</span>;
+			</code></pre>
+			
+			<script>buildError('Not used function pointers has to be NULL! Otherwise it may lead to the undefined behavioral!')</script><div class="error"><svg class="errorIcon" xmlns="http://www.w3.org/2000/svg" height="25" viewBox="0 0 48 48" width="25"><path d="M22.65 26.35H25.65V13.7H22.65ZM24 34Q24.7 34 25.175 33.525Q25.65 33.05 25.65 32.35Q25.65 31.65 25.175 31.175Q24.7 30.7 24 30.7Q23.3 30.7 22.825 31.175Q22.35 31.65 22.35 32.35Q22.35 33.05 22.825 33.525Q23.3 34 24 34ZM24 44Q19.75 44 16.1 42.475Q12.45 40.95 9.75 38.25Q7.05 35.55 5.525 31.9Q4 28.25 4 24Q4 19.8 5.525 16.15Q7.05 12.5 9.75 9.8Q12.45 7.1 16.1 5.55Q19.75 4 24 4Q28.2 4 31.85 5.55Q35.5 7.1 38.2 9.8Q40.9 12.5 42.45 16.15Q44 19.8 44 24Q44 28.25 42.45 31.9Q40.9 35.55 38.2 38.25Q35.5 40.95 31.85 42.475Q28.2 44 24 44ZM24 24Q24 24 24 24Q24 24 24 24Q24 24 24 24Q24 24 24 24Q24 24 24 24Q24 24 24 24Q24 24 24 24Q24 24 24 24ZM24 41Q31 41 36 36Q41 31 41 24Q41 17 36 12Q31 7 24 7Q17 7 12 12Q7 17 7 24Q7 31 12 36Q17 41 24 41Z"></path></svg>Not used function pointers has to be NULL! Otherwise it may lead to the undefined behavioral!</div>
+			
+			<p>and dont forget to return it</p>
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-keyword">return</span> plugin;
+			</code></pre>
+			
+			<h3 id="tutorial_2">Manage initialization and data</h3>
+			<p>The first function that will be called by program is
+			</p><pre><code class="lang-c hljs language-c">
+<span class="hljs-type">int</span> <span class="hljs-title function_">init</span><span class="hljs-params">(<span class="hljs-type">IPluginInfo</span>* info, <span class="hljs-type">void</span>** space)</span>
+			</code></pre>
+			<p>It allows the user to allocate any data he wants. Note that program can call this function not only for the first initialization, but when any configuration change occurs, so the user can reallocate data if needed (exm. sample rate and length of the delay buffer).</p>
+			<p>Before we dive inside the initialization function, we prepare struct that will represent our data. We do not have to do this, we can go straight and allocate the data directly, but this way its much cleaner and readable.</p>
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Space</span> {</span>
+
+	<span class="hljs-type">double</span> gainCoef;
+
+} <span class="hljs-type">Space</span>;
+			</code></pre>
+			
+			<p>Now we need to allocate our struct on the heap and store the pointer, assuming <code>DF_GAIN_COEF</code> is macro that represents our default gain. Note that function has to return 0 on succes.</p>
+			<pre><code class="lang-c hljs language-c">
+*space = <span class="hljs-built_in">malloc</span>(<span class="hljs-keyword">sizeof</span>(<span class="hljs-type">Space</span>));
+<span class="hljs-keyword">if</span> (*space == <span class="hljs-literal">NULL</span>) <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;
+
+((<span class="hljs-type">Space</span>*) (*space))-&gt;gainCoef = DF_GAIN_COEF;
+	
+<span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+			</code></pre>
+			
+			<h3 id="tutorial_3">Implemnt controls callbacks</h3>
+			
+			<p>User interaction with controls is signalized by callbacks, that were bind in DLL interface function. The value of the control is changed in place, when user does so. So there is actually no need to use them and use them directly while processing. But, in most cases we don't want to use raw value, but use it to compute something, which will stay the same until the next change. Based on it, it's better to use callbacks to precompute all needed variables values.</p>
+			
+			<p>In our case we gave user input in decibels, as it's the most common way to represent volume / gain. But, we cannot use the decibel value directly to amplify signal, we have to convert it to magnitude first. In our process function we can use just <code>gainCoef</code> variable without any computations.</p>
+			<pre><code class="lang-c hljs language-c">
+((<span class="hljs-type">Space</span>*) source-&gt;plugin-&gt;space)-&gt;gainCoef = <span class="hljs-built_in">pow</span>(<span class="hljs-number">10</span>, source-&gt;value / <span class="hljs-number">20.0</span>);
+			</code></pre>
+			
+			<script>buildNote('If you need to use space more times, extract it first as const pointer, to not jump that much.')</script><div class="note"><svg class="noteIcon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 0 24 24" width="25px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"></path><path d="M8 16h8v2H8zm0-4h8v2H8zm6-10H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"></path></svg>If you need to use space more times, extract it first as const pointer, to not jump that much.</div>
+			
+			<h3 id="tutorial_4">Process the signal</h3>
+			
+			<p>To process a signal, we use the process function with the following definition.</p>
+			
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-type">void</span> <span class="hljs-title function_">process</span><span class="hljs-params">(<span class="hljs-type">void</span>* inBuffer, <span class="hljs-type">void</span>* outBuffer, <span class="hljs-type">int</span> bufferLength, <span class="hljs-type">void</span>* space)</span>
+			</code></pre>
+			
+			<p>One can assume that <code>inBuffer</code> and <code>outBuffer</code> will point to the different memory for whole <code>bufferLength</code>. Our job here is to fill the <code>outBuffer</code> with some reseanable data using <code>inBuffer</code>. We also recieve <code>space</code>, which points to our data we allocated inside inicialization function.</p>
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-type">double</span>* <span class="hljs-type">const</span> inBuff = inBuffer;
+<span class="hljs-type">double</span>* <span class="hljs-type">const</span> outBuff = outBuffer;
+
+<span class="hljs-type">const</span> <span class="hljs-type">double</span> gainCoef = ((<span class="hljs-type">Space</span>*) space)-&gt;gainCoef;
+	
+<span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; bufferLength; i++) {
+	outBuff[i] = gainCoef * inBuff[i];
+}
+			</code></pre>
+			
+		</section>
+
+		<section>
+			<h2 id="documentation">API Reference</h2>
+			
+			<h3 id="iplugin">IPlugin</h3>
+			
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">IPlugin</span> {</span>
+
+	<span class="hljs-type">const</span> <span class="hljs-type">wchar_t</span>* name;
+
+	<span class="hljs-type">PluginUIHandler</span>* uihnd;
+
+	<span class="hljs-type">int</span> (*init) (<span class="hljs-type">IPluginInfo</span>* info, <span class="hljs-type">void</span>** space);
+	<span class="hljs-type">void</span> (*free) (<span class="hljs-type">void</span>* space);
+
+	<span class="hljs-type">void</span> (*process) (<span class="hljs-type">void</span>* inBuffer, <span class="hljs-type">void</span>* outBuffer, <span class="hljs-type">int</span> bufferLength, <span class="hljs-type">void</span>* space);
+
+	<span class="hljs-type">int</span> state;
+
+	<span class="hljs-type">void</span>* space;
+
+};			
+			</code></pre>
+			
+			<p>Struct represents handler that suppose to represent any plugin.</p>
+			<h4>Attributes</h4>
+			<table>
+				<tbody>
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">name</code></pre></td>
+					<td>Name of the plugin that will be displayed inside the program. String has to be null terminated.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">uihnd</code></pre></td>
+					<td>Handler that represents user interface of the plugin.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*init</code></pre></td>
+					<td>Points to the function that will be called when plugin will be selected or when any important change occures. Can be <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-literal">NULL</span></code></pre>.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*free</code></pre></td>
+					<td>Points to the function that will be called when plugin will be removed. Supposed to free all alocated memory. Can be <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-literal">NULL</span></code></pre>.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*process</code></pre></td>
+					<td>Points to the function that will be called when processing of buffers will be needed.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">state</code></pre></td>
+					<td>Defines the state of the plugin. Used internaly by program.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">space</code></pre></td>
+					<td>Pointer to the any needed heap allocated memory.</td>
+					</tr>
+					
+				</tbody>
+			</table>
+			
+			<h3 id="iplugininfo">IPluginInfo</h3>
+			
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">IPluginInfo</span> {</span>
+
+	<span class="hljs-type">int</span> sampleRate;
+	<span class="hljs-type">int</span> maxBufferLength;
+
+};
+			</code></pre>
+			
+			<p>Represents information that is maintain by program and can affect plugin.</p>
+			<h4>Attributes</h4>
+			<table>
+				<tbody>
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">sampleRate</code></pre></td>
+					<td>Samples per second.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">maxBufferLength</code></pre></td>
+					<td>Maximal length of the input and output buffers. Buffers are in doubles.</td>
+					</tr>
+				</tbody>
+			</table>
+			
+			<h3 id="pluginuihandler">PluginUIHandler</h3>
+			
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">PluginUIHandler</span> {</span>
+
+	<span class="hljs-type">int</span> x;
+	<span class="hljs-type">int</span> y;
+
+	<span class="hljs-type">int</span> width;
+	<span class="hljs-type">int</span> height;
+
+	<span class="hljs-type">int</span> maxTopY;
+	<span class="hljs-type">int</span> maxBottomY;
+
+	<span class="hljs-type">int</span> visible;
+
+	<span class="hljs-type">PluginControl</span>** controls;
+	<span class="hljs-type">int</span> controlCount;
+
+	<span class="hljs-type">IPlugin</span>* plugin;
+
+};
+			</code></pre>
+			
+			Represents the plugin UI. It's not recomended to set it manualy, one should use functions <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginUIHandler</span>* <span class="hljs-title function_">buildPluginUIHandler</span><span class="hljs-params">()</span></code></pre> to allocate and <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>* <span class="hljs-title function_">addControl</span><span class="hljs-params">(<span class="hljs-type">PluginUIHandler</span>* uihnd, PluginControlType controlType)</span></code></pre> to add control.
+			<h4>Attributes</h4>
+			<table>
+				<tbody>
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">x</code></pre></td>
+					<td>The x coord the plugins left top corner according to the left top window corner.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">y</code></pre></td>
+					<td>The y coord the plugins left top corner according to the left top window corner.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">width</code></pre></td>
+					<td>The overall width of the plugin.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">height</code></pre></td>
+					<td>The overall height of the plugin.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">visible</code></pre></td>
+					<td>Signals if plugin is visible. Any value that evaluates as true means that plugin is visibile, others that it's hidden.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">controls</code></pre></td>
+					<td>Points to the individual controls pointers.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">controlCount</code></pre></td>
+					<td>Number of controls.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">plugin</code></pre></td>
+					<td>Points to the plugin handler itself to provide easier acess.</td>
+					</tr>
+				</tbody>
+			</table>
+			
+			<h3 id="plugincontrol">PluginControl</h3>
+			
+			<pre><code class="lang-c hljs language-c">
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">PluginControl</span> {</span>
+
+	<span class="hljs-type">IPlugin</span>* plugin;
+
+	<span class="hljs-type">int</span> type;
+
+	<span class="hljs-type">double</span> MIN_VALUE;
+	<span class="hljs-type">double</span> MAX_VALUE;
+
+	<span class="hljs-type">double</span> minValue;
+	<span class="hljs-type">double</span> maxValue;
+	<span class="hljs-type">double</span> value;
+	<span class="hljs-type">double</span> step;
+
+	<span class="hljs-type">int</span> x;
+	<span class="hljs-type">int</span> y;
+
+	<span class="hljs-type">int</span> width;
+	<span class="hljs-type">int</span> height;
+
+	<span class="hljs-type">int</span> color;
+	<span class="hljs-type">int</span> backgroundColor;
+
+	<span class="hljs-type">int</span> fillType;
+
+	<span class="hljs-type">char</span>* label;
+
+	<span class="hljs-type">double</span> sensitivity;
+	<span class="hljs-type">int</span> selected;
+
+	<span class="hljs-type">void</span> (*eMouseClick) (<span class="hljs-type">PluginControl</span>* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
+	<span class="hljs-type">void</span> (*eMouseMove) (<span class="hljs-type">PluginControl</span>* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
+	<span class="hljs-type">void</span> (*eMouseDblClick) (<span class="hljs-type">PluginControl</span>* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
+	<span class="hljs-type">void</span> (*eMouseDown) (<span class="hljs-type">PluginControl</span>* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
+	<span class="hljs-type">void</span> (*eMouseUp) (<span class="hljs-type">PluginControl</span>* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
+
+	<span class="hljs-type">void</span> (*eChange) (<span class="hljs-type">PluginControl</span>* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
+
+};
+			</code></pre>
+			
+			Represents the plugins control. It's not recommended to set every attribute manually, one should use function <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>* <span class="hljs-title function_">addControl</span><span class="hljs-params">(<span class="hljs-type">PluginUIHandler</span>* uihnd, PluginControlType controlType)</span></code></pre> to add it to the <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginUIHandler</span></code></pre> instance.
+			<h4>Attributes</h4>
+			<table>
+				<tbody>
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">plugin</code></pre></td>
+					<td>Points to the plugin handler itself to provide easier acess.</td>
+					</tr>
+				
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">type</code></pre></td>
+					<td>Type of the control. Has to be one of the PluginControlType enumerated values.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">MIN_VALUE</code></pre></td>
+					<td>Mininum value that control can ever represent.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">MAX_VALUE</code></pre></td>
+					<td>Maximum value that control can ever represent.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">minValue</code></pre></td>
+					<td>Mininum value that control can be set by user.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">maxValue</code></pre></td>
+					<td>Maximum value that control can be set by user.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">value</code></pre></td>
+					<td>Curretn value of the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">step</code></pre></td>
+					<td>If used any discrete control, defines the step beetween each bin.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">x</code></pre></td>
+					<td>The x coord of the controls left top corner according to the left top plugin corner.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">y</code></pre></td>
+					<td>The y coord of the controls left top corner according to the left top plugin corner.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">width</code></pre></td>
+					<td>The overall width of the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">height</code></pre></td>
+					<td>The overall height of the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">color</code></pre></td>
+					<td>Front color, mainly used for fonts. Expected is ARGB uint32_t value.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">backgroundColor</code></pre></td>
+					<td>Back color, mainly used for background. Expected is ARGB uint32_t value.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">fillType</code></pre></td>
+					<td>Defines how the background will be drawn. Has to be one of the <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginFillPattern</span></code></pre> enumerated values.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">label</code></pre></td>
+					<td>Null terminated string that represents the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">sensitivity</code></pre></td>
+					<td>Defines the sensitivity coficient of the control, each control can interpret it in different way.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">selected</code></pre></td>
+					<td>Just another flag that has no general meaning, but individual control (for example toggle button) can use it.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*eMouseClick</code></pre></td>
+					<td>Points to the function that will be called when mouse click at the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*eMouseMove</code></pre></td>
+					<td>Points to the function that will be called when mouse moves over the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*eMouseDblClick</code></pre></td>
+					<td>Points to the function that will be called when mouse double click at the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*eMouseDown</code></pre></td>
+					<td>Points to the function that will be called when mouse is down at the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*eMouseUp</code></pre></td>
+					<td>Points to the function that will be called when mouse is up at the control.</td>
+					</tr>
+					
+					<tr>
+					<td><pre><code class="lang-c hljs language-c">*eChange</code></pre></td>
+					<td>Points to the function that will be called when value of the control will be changed.</td>
+					</tr>
+					
+				</tbody>
+			</table>
+	
+		<h3 id="plotinfo">PlotInfo</h3>
+		
+				<pre><code class="lang-c hljs language-c">
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">PlotInfo</span> {</span>
+
+	<span class="hljs-type">int</span> lenSamples;
+	<span class="hljs-type">int</span> sampleRate;
+	<span class="hljs-type">int</span> endIdx;
+	<span class="hljs-type">double</span>* dataBuffer;
+	<span class="hljs-type">void</span>* renderBuffer;
+
+};
+		</code></pre>
+		
+		Represents protocol format when data has to be rendered. The following structure has to be at the begining of <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">IPlugin</span>.space</code></pre> when <code>PCT_SIGNAL_VIEWER</code> or <code>PCT_FREQUENCY_VIEWER</code> is used.
+		<h4>Attributes</h4>
+		<table>
+			<tbody>
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">lenSamples</code></pre></td>
+				<td>Length of the dataBuffer in doubles.</td>
+				</tr>
+			
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">sampleRate</code></pre></td>
+				<td>Sample rate.</td>
+				</tr>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">endIdx</code></pre></td>
+				<td>Index of last inserted element in <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c">dataBuffer.</code></pre></td>
+				</tr>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">dataBuffer</code></pre></td>
+				<td>Has to points to to the actual data represented as doubles.</td>
+				</tr>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">renderBuffer</code></pre></td>
+				<td>Internal variable. Program can use it to cash anything related with rendering.</td>
+				</tr>
+				
+			</tbody>
+		</table>
+		
+		<h3 id="plugincontroltype">PluginControlType</h3>
+		
+		<pre><code class="lang-c hljs language-c">
+<span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">enum</span> <span class="hljs-title">PluginControlType</span> {</span>
+
+	PCT_BACKGROUND,
+	PCT_KNOB,
+	PCT_STEP_KNOB,
+	PCT_SIGNAL_VIEWER,
+	PCT_FREQUENCY_VIEWER
+
+} PluginControlType;
+		</code></pre>
+		
+		Enumerates available controls.
+		<h4>Values</h4>
+		<table>
+			<tbody>
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">PCT_BACKGROUND</code></pre></td>
+				<td>Represents background element, each control has to have at least one as their first control. It's automatically created when <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginUIHandler</span>* <span class="hljs-title function_">buildPluginUIHandler</span><span class="hljs-params">()</span></code></pre> function is called. It's not recomended to create it by hands.</td>
+				</tr>
+			
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">PCT_KNOB</code></pre></td>
+				<td>Represents analog knob. Сan be any value between <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.MAX_VALUE</code></pre> and <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.MIN_VALUE</code></pre>.</td>
+				</tr>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">PCT_STEP_KNOB</code></pre></td>
+				<td>Represents knob with fixed values. Step between bins is defined by <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.step</code></pre>. The overall set of values is in range of <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.MIN_VALUE</code></pre> and <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.MAX_VALUE</code></pre>, but one can change the offset of first bin using <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.minValue</code></pre> respectively <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c">Control.maxValue</code></pre></td>
+				</tr>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">PCT_SIGNAL_VIEWER</code></pre></td>
+				<td>If used, program will then assume that the <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">IPlugin</span>.space</code></pre> starts with <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">IPluginInfo</span></code></pre> and will render the data accordingly. Data will be rendered as absolute values mirrored by horizontal line in the center for fancier look.</td>
+				</tr>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">PCT_FREQUENCY_VIEWER</code></pre></td>
+				<td>If used, program will then assume that the <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">IPlugin</span>.space</code></pre> starts with <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">IPluginInfo</span></code></pre> and will render the data accordingly. Data will be processed with FFT and the frequency spectrum will be displayed.</td>
+				</tr>
+				
+			</tbody>
+		</table>
+		
+		<h3 id="pluginfillpattern">PluginFillPattern</h3>
+		
+		<pre><code class="lang-c hljs language-c">
+<span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">enum</span> <span class="hljs-title">PluginFillPattern</span> {</span>
+
+	PFP_SOLID_COLOR,
+	PFP_CHECKERBOARD,
+	PFP_DOTS,
+
+} <span class="hljs-type">PluginFillPattern</span>;
+		</code></pre>
+		
+		Enumerates available background fill patterns.
+		<h4>Values</h4>
+		<table>
+			<tbody>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">PFP_SOLID_COLOR</code></pre></td>
+				<td>Solid color will be used to draw background with <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.backgroundColor</code></pre>.</td>
+				</tr>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">PFP_CHECKERBOARD</code></pre></td>
+				<td>Background will be rendered as checkboard. <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.color</code></pre> and <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.backgroundColor</code></pre> will be used.</td>
+				</tr>
+				
+				<tr>
+				<td><pre><code class="lang-c hljs language-c">PFP_DOTS</code></pre></td>
+				<td>background will be rendered with dots. <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.color</code></pre> will be used for dots, <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span>.backgroundColor</code></pre> for background.</td>
+				</tr>
+				
+			</tbody>
+		</table>
+		
+		<h3 id="ctrl_param">CTRL_PARAM</h3>
+		
+		<pre><code class="lang-c hljs language-c">
+<span class="hljs-keyword">typedef</span> <span class="hljs-type">long</span> <span class="hljs-type">long</span> CTRL_PARAM;
+		</code></pre>
+		
+		Used to represent <pre style="display: inline; padding: 0;"><code style="display: inline; padding: 0;" class="lang-c hljs language-c"><span class="hljs-type">PluginControl</span></code></pre> event parameter.
+		
+		</section>
+
+    </div>
+    
+
+</body>
+</html>
