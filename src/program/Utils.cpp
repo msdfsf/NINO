@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "Utils.h"
 
@@ -44,6 +45,8 @@ namespace Utils {
 			i++;
 
 		}
+
+		return i;
 	
 	}
 
@@ -55,6 +58,8 @@ namespace Utils {
 				return i;
 			}
 		}
+
+		return -1;
 
 	}
 
