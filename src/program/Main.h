@@ -5,6 +5,8 @@
 #define GET_HIGH_ORDER_WORD(param) ((short)(param >> (sizeof(int*) * 4)))
 #define GET_LOW_ORDER_WORD(param) ((short)(param))
 
+#define SET_WORD(hg, lw) (((hg << (sizeof(int*) * 4)) | lw))
+
 #define WHEEL_DELTA 120
 
 #define M_PI_LONG          3.141592653589793238462643383279502884L
