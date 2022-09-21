@@ -3,12 +3,12 @@
 #include "Input.h"
 #include "Render.h"
 #include "Key.h";
-#include "TimedEventsDriver.h";
+#include "TickEventsDriver.h";
 #include "Color.h"
 
 void charInput(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
 void mouseClick(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
-void timerCallback(Control* ctrl);
+int timerCallback(void* ctrl);
 
 Input::Input():Control() {
 
@@ -22,7 +22,8 @@ Input::Input():Control() {
 	eMouseClick = &mouseClick;
 	eCharInput = &charInput;
 
-	TimedEventsDriver::add(this, &timerCallback, 300);
+	TickEventsDriver::Node* node = TickEventsDriver::add(this, &timerCallback, 10);
+	node->type = TickEventsDriver::TET_RENDER;
 
 }
 
@@ -76,12 +77,12 @@ void mouseClick(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
 
 }
 
-void timerCallback(Control* ctrl) {
+int timerCallback(void* ctrl) {
 
-	Input* inp = (Input*) (ctrl);
+	Input* const inp = (Input*) (ctrl);
 	inp->textCursor = !inp->textCursor;
 
-	Render::redraw();
+	return 0;
 
 }
 
