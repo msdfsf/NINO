@@ -38,6 +38,9 @@ namespace Resources {
 	defBitmap(powerButtonOn, "PowerButtonOn.bmp");
 	defBitmap(powerButtonOff, "PowerButtonOff.bmp");
 	
+	defBitmap(leftChannel, "LeftChannel.bmp");
+	defBitmap(rightChannel, "RightChannel.bmp");
+
 	defBitmap(plus, "Plus.bmp");
 	defBitmap(plusInv, "PlusInv.bmp");
 	defBitmap(minus, "Minus.bmp");
@@ -69,6 +72,9 @@ namespace Resources {
 
 		ldBitmap(powerButtonOn);
 		ldBitmap(powerButtonOff);
+
+		ldBitmap(leftChannel);
+		ldBitmap(rightChannel);
 		
 		ldBitmap(plus);
 		ldBitmap(plusInv);
