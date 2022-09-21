@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "PluginContainer.h"
 #include "Plugin.h"
@@ -8,6 +9,7 @@
 #include "Cursor.h"
 #include "Main.h"
 #include "AudioDriver.h"
+#include "PluginState.h"
 #include <limits.h>
 
 void scroll(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
@@ -82,10 +84,84 @@ void togglePluginOnOff(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
 	const int idx = container->id;
 	IPlugin* const plugin = pluginContainer->plugins[idx];
 
-	const int state = !plugin->state;
-	plugin->state = state;
+	const int state = plugin->state;
 
-	image->selected = state;	
+	if (plugin->state == PluginState::OFF) {
+		
+		const int leftState = header->childrens[image->id + 2]->selected;
+		const int rightState = header->childrens[image->id + 1]->selected;
+		
+		if (leftState && rightState) {
+			plugin->state = PluginState::ON;
+		} else {
+			plugin->state = leftState ? PluginState::ON_LEFT : PluginState::ON_RIGHT;
+		}
+	
+	} else {
+		
+		plugin->state = PluginState::OFF;
+	
+	}
+
+	image->selected = !image->selected;
+
+	Render::redraw();
+
+}
+
+void togglePluginLeftChannel(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
+
+	Image* const image = (Image*)source;
+	Control* const header = (Control*)image->parent;
+	Control* const container = (Control*)header->parent;
+	PluginContainer* const pluginContainer = (PluginContainer*)container->parent;
+
+	const int idx = container->id;
+	IPlugin* const plugin = pluginContainer->plugins[idx];
+
+	const int state = plugin->state;
+
+	if (state == PluginState::ON_LEFT) return;
+
+	if (state != PluginState::OFF) {
+		
+		plugin->state = (plugin->state == PluginState::ON_RIGHT) ? PluginState::ON : PluginState::ON_RIGHT;
+		image->selected = !image->selected;
+
+	} else {
+
+		image->selected = !(image->selected && header->childrens[image->id - 1]->selected);
+
+	}
+
+	Render::redraw();
+
+}
+
+void togglePluginRightChannel(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
+
+	Image* const image = (Image*)source;
+	Control* const header = (Control*)image->parent;
+	Control* const container = (Control*)header->parent;
+	PluginContainer* const pluginContainer = (PluginContainer*)container->parent;
+
+	const int idx = container->id;
+	IPlugin* const plugin = pluginContainer->plugins[idx];
+
+	const int state = plugin->state;
+	
+	if (state == PluginState::ON_RIGHT) return;
+
+	if (state != PluginState::OFF) {
+		
+		plugin->state = (plugin->state == PluginState::ON_LEFT) ? PluginState::ON : PluginState::ON_LEFT;
+		image->selected = !image->selected;
+	
+	} else {
+
+		image->selected = !(image->selected && header->childrens[image->id + 1]->selected);
+	
+	}
 
 	Render::redraw();
 
@@ -132,6 +208,8 @@ void movePluginPlaceUp(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
 	Control* const container = (Control*)header->parent;
 	PluginContainer* const pluginContainer = (PluginContainer*)container->parent;
 
+	const int borderBottomWidth = pluginContainer->borderBottomWidth;
+
 	const int idx = container->id;
 	if (idx == 0) return;
 
@@ -145,9 +223,10 @@ void movePluginPlaceUp(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
 		PluginUIHandler* const uihndBottom = plugins[idx]->uihnd;
 
 		const int topY = uihndUpper->y;
-		const int spaceBetween = uihndBottom->y - (topY + uihndUpper->height);
+		const int spaceBetween = uihndBottom->y - (topY + (uihndUpper->visible ? uihndUpper->height : -borderBottomWidth));
 
-		const int bottomY = topY + uihndBottom->height + spaceBetween;
+		// const int bottomY = topY + uihndBottom->height + spaceBetween;
+		const int bottomY = topY + (uihndBottom->visible ? uihndBottom->height : -borderBottomWidth) + spaceBetween;
 
 		Plugin::setY(uihndBottom, topY);
 		Plugin::setY(uihndUpper, bottomY);
@@ -195,6 +274,8 @@ void movePluginPlaceDown(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) 
 	Control* const container = (Control*)header->parent;
 	PluginContainer* const pluginContainer = (PluginContainer*)container->parent;
 
+	const int borderBottomWidth = pluginContainer->borderBottomWidth;
+
 	const int idx = container->id;
 	if (idx >= pluginContainer->pluginCount - 1) return;
 
@@ -207,9 +288,9 @@ void movePluginPlaceDown(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) 
 		PluginUIHandler* const uihndBottom = plugins[idx + 1]->uihnd;
 
 		const int topY = uihndUpper->y;
-		const int spaceBetween = uihndBottom->y - (topY + uihndUpper->height);
+		const int spaceBetween = uihndBottom->y - (topY + (uihndUpper->visible ? uihndUpper->height : -borderBottomWidth));
 
-		const int bottomY = topY + uihndBottom->height + spaceBetween;
+		const int bottomY = topY + (uihndBottom->visible ? uihndBottom->height : -borderBottomWidth) + spaceBetween;
 
 		Plugin::setY(uihndBottom, topY);
 		Plugin::setY(uihndUpper, bottomY);
@@ -373,6 +454,34 @@ int PluginContainer::processMessage(ControlEvent::ControlEvent controlEvent, CTR
 
 }
 
+void PluginContainer::setPluginState(int pluginIdx, int state) {
+	
+	Control* const header = this->childrens[pluginIdx]->childrens[0];
+
+	switch (state) {
+
+		case PluginState::OFF:
+			header->childrens[2]->selected = 0;
+			break;
+
+		case PluginState::ON:
+			header->childrens[2]->selected = 1;
+			break;
+
+		case PluginState::ON_LEFT:
+			header->childrens[3]->selected = 0;
+			header->childrens[4]->selected = 1;
+			break;
+
+		case PluginState::ON_RIGHT:
+			header->childrens[3]->selected = 1;
+			header->childrens[4]->selected = 0;
+			break;
+
+	}
+
+}
+
 void PluginContainer::setPluginCount(int count) {
 
 	if (count <= 0) return;
@@ -495,6 +604,45 @@ void PluginContainer::setPluginCount(int count) {
 
 			onOffSwitch->eMouseClick = &togglePluginOnOff;
 
+			Image* rightChannelSwitch = new Image();
+			header->addControl(rightChannelSwitch);
+
+			rightChannelSwitch->setPadding(imgPadding);
+			rightChannelSwitch->paddingLeft = imgSpaceBetween;
+			rightChannelSwitch->paddingRight = borderWidth;
+			rightChannelSwitch->setHeight(1.0);
+			rightChannelSwitch->width = rightChannelSwitch->height - 2 * imgPadding + rightChannelSwitch->paddingLeft + rightChannelSwitch->paddingRight;
+			rightChannelSwitch->setX(1.0);
+			rightChannelSwitch->x = onOffSwitch->x - rightChannelSwitch->width;
+			rightChannelSwitch->setY(0.0);
+			rightChannelSwitch->setColor(MAIN_BACK_COLOR, 0xFFf92673);
+			rightChannelSwitch->drawType = ImageDrawType::ONE_COLOR;
+			rightChannelSwitch->selected = 1;
+			rightChannelSwitch->setImage((Render::Bitmap*) Resources::rightChannel);
+			rightChannelSwitch->cursor = Cursor::POINTER;
+
+			rightChannelSwitch->eMouseClick = &togglePluginRightChannel;
+
+			Image* leftChannelSwitch = new Image();
+			header->addControl(leftChannelSwitch);
+
+			leftChannelSwitch->setPadding(imgPadding);
+			leftChannelSwitch->paddingLeft = imgSpaceBetween;
+			leftChannelSwitch->paddingRight = borderWidth;
+			leftChannelSwitch->setHeight(1.0);
+			leftChannelSwitch->width = leftChannelSwitch->height - 2 * imgPadding + leftChannelSwitch->paddingLeft + leftChannelSwitch->paddingRight;
+			leftChannelSwitch->setX(1.0);
+			leftChannelSwitch->x = rightChannelSwitch->x - leftChannelSwitch->width;
+			leftChannelSwitch->setY(0.0);
+			leftChannelSwitch->setColor(MAIN_BACK_COLOR, 0xFFf92673);
+			leftChannelSwitch->drawType = ImageDrawType::ONE_COLOR;
+			leftChannelSwitch->selected = 1;
+			leftChannelSwitch->setImage((Render::Bitmap*) Resources::leftChannel);
+			leftChannelSwitch->cursor = Cursor::POINTER;
+
+			leftChannelSwitch->eMouseClick = &togglePluginLeftChannel;
+
+
 			Image* showHideSwitch = new Image();
 			header->addControl(showHideSwitch);
 
@@ -503,7 +651,7 @@ void PluginContainer::setPluginCount(int count) {
 			showHideSwitch->paddingRight = 0;
 			showHideSwitch->setHeight(1.0);
 			showHideSwitch->width = showHideSwitch->height - 2 * imgPadding + showHideSwitch->paddingLeft + showHideSwitch->paddingRight;
-			showHideSwitch->x = onOffSwitch->x - showHideSwitch->width;
+			showHideSwitch->x = leftChannelSwitch->x - showHideSwitch->width;
 			showHideSwitch->setY(0.0);
 			showHideSwitch->setImage((Render::Bitmap*) Resources::minus);
 			showHideSwitch->cursor = Cursor::POINTER;
