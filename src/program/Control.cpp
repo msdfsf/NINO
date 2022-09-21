@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "Control.h"
 #include "Color.h"
@@ -52,7 +53,7 @@ Control::Control() {
 
 	this->selectFrontColor = this->color;
 	this->selectBackColor = this->backgroundColor;
-	
+
 	this->hoverFrontColor = Color::WHITE;
 	this->hoverBackColor = Color::PURPLE;
 
@@ -113,7 +114,7 @@ Control::Control(Control* parent, int x, int y, int width, int height) {
 Control::Control(Control* parent, double x, double y, double width, double height) {
 
 	this->parent = parent;
-	
+
 	this->setX(x);
 	this->setY(y);
 
@@ -145,7 +146,7 @@ void Control::draw() {
 	//this->overflowTop = 0;
 	//this->overflowBottom = 0;
 	if (overflowBehaviour != OverflowType::VISIBLE) {
-		
+
 		// top overflow handling
 		if (this->y < parentInBoxY + parentOverflowTop) {
 
@@ -155,7 +156,8 @@ void Control::draw() {
 			}
 			this->overflowTop = overflowTop;
 
-		} else {
+		}
+		else {
 
 			overflowTop = 0;
 			this->overflowTop = 0;
@@ -177,7 +179,8 @@ void Control::draw() {
 
 			overflowBottom = bottomCutHeight;
 
-		} else {
+		}
+		else {
 			this->overflowBottom = 0;
 		}
 
@@ -189,17 +192,17 @@ void Control::draw() {
 	// background
 	Render::color = backColor;
 	Render::fillRect(
-		this->x + borderLeftWidth, 
-		y + overflowTop + borderTopWidth, 
-		this->width - borderLeftWidth - borderRightWidth, 
+		this->x + borderLeftWidth,
+		y + overflowTop + borderTopWidth,
+		this->width - borderLeftWidth - borderRightWidth,
 		this->height - overflowTop - bottomCutHeight - visibleBorderBottomWidth - borderTopWidth
 	);
 
 	// borders
 	Render::color = this->borderColor;
-	
+
 	if (outerBorderBevelWidth <= 0) {
-		
+
 		Render::drawRect(
 			this->x,
 			y + overflowTop,
@@ -210,8 +213,9 @@ void Control::draw() {
 			borderTopWidth - overflowTop,
 			(borderBottomWidth < this->height - overflowTop - bottomCutY) ? borderBottomWidth : this->height - overflowTop - bottomCutY
 		);
-	
-	} else {
+
+	}
+	else {
 
 		// not yet done
 		// overflow needs to be done
@@ -277,7 +281,7 @@ void Control::draw() {
 		);
 
 	}
-	
+
 	// text
 	const int x = this->x + paddingLeft + borderTopWidth;
 	const int y = this->y + paddingTop + borderTopWidth;
@@ -335,7 +339,7 @@ void Control::draw() {
 	if (innerBorderBevelWidth > 0) {
 
 		Render::color = borderColor;
-		
+
 		Render::drawRightTriangle(
 			this->x + borderLeftWidth,
 			this->y + overflowTop + borderTopWidth,
@@ -367,7 +371,7 @@ void Control::draw() {
 			innerBorderBevelWidth - overflowTop,
 			Render::CornerType::TOP_LEFT
 		);
-	
+
 	}
 
 	// childrens
@@ -379,21 +383,21 @@ void Control::draw() {
 
 		switch (childrens[i]->displayOrder) {
 
-			case DisplayOrder::PARENT_LAST: {
-				childrensDrawLast[lastIdxDrawLast] = childrens[i];
-				lastIdxDrawLast++;
-				continue;
-			}
+		case DisplayOrder::PARENT_LAST: {
+			childrensDrawLast[lastIdxDrawLast] = childrens[i];
+			lastIdxDrawLast++;
+			continue;
+		}
 
-			case DisplayOrder::ABOVE_ALL: {
-				childrensAboveAll.push_back(childrens[i]);
-				continue;
-			}
+		case DisplayOrder::ABOVE_ALL: {
+			childrensAboveAll.push_back(childrens[i]);
+			continue;
+		}
 
 		}
 
 		childrens[i]->draw();
-	
+
 	}
 
 	for (int i = 0; i < lastIdxDrawLast; i++) {
@@ -407,7 +411,7 @@ void Control::addControl(Control* control) {
 	control->id = childrenCount;
 	childrenCount++;
 
-	Control** ctrls = new Control*[childrenCount];
+	Control** ctrls = new Control * [childrenCount];
 
 	int i;
 	for (i = 0; i < childrenCount - 1; i++) {
@@ -418,13 +422,19 @@ void Control::addControl(Control* control) {
 	ctrls[i] = control;
 
 	// delete[] childrens;
-	delete childrens; // how this 'delete' works? hope its fine 
-
+	delete[] childrens; // how this 'delete' works? hope its fine 
 	childrens = ctrls;
 
-	free(childrensDrawLast);
 	//delete[] childrensDrawLast;
-	childrensDrawLast = new Control*[childrenCount];
+	// free(childrensDrawLast);
+	delete[] childrensDrawLast;
+	childrensDrawLast = new Control * [childrenCount]; // error in relase some times
+	/*
+	childrensDrawLast = (Control**) malloc(childrenCount * sizeof(Control*));
+	if (!childrenCount) {
+		exit(2);
+	}
+	*/
 
 }
 
@@ -445,7 +455,6 @@ void Control::pushControlFront(Control* control) {
 	ctrls[0] = control;
 
 	delete[] childrens;
-
 	childrens = ctrls;
 
 
@@ -464,7 +473,8 @@ void Control::setX(double x) {
 
 	if (x < 0) {
 		x = 0;
-	} else if (x > 1) {
+	}
+	else if (x > 1) {
 		x = 1;
 	}
 
@@ -473,9 +483,9 @@ void Control::setX(double x) {
 }
 
 void Control::setY(const int y) {
-	
+
 	// const int newY = (y >= 0) ? y : 0;
-	
+
 	const int deltaY = y - this->y;
 	this->y = y;
 
@@ -491,7 +501,8 @@ void Control::setY(double y) {
 
 	if (y < 0) {
 		y = 0;
-	} else if (y > 1) {
+	}
+	else if (y > 1) {
 		y = 1;
 	}
 
@@ -509,7 +520,8 @@ void Control::setWidth(double width) {
 
 	if (width < 0) {
 		width = 0;
-	} else if (width > 1){
+	}
+	else if (width > 1) {
 		width = 1;
 	}
 
@@ -527,7 +539,8 @@ void Control::setHeight(double height) {
 
 	if (height < 0) {
 		height = 0;
-	} else if (height > 1) {
+	}
+	else if (height > 1) {
 		height = 1;
 	}
 
@@ -545,7 +558,7 @@ void Control::setPadding(int width) {
 }
 
 void Control::setBorderWidth(int borderWidth) {
-	
+
 	this->borderLeftWidth = borderWidth;
 	this->borderRightWidth = borderWidth;
 	this->borderTopWidth = borderWidth;
@@ -586,21 +599,24 @@ void Control::setColor(int color, int backColor) {
 
 void Control::setText(char* text, const int textLen) {
 
-	this->text = (char*) malloc(textLen * sizeof(char));
+	this->text = (char*)malloc((textLen + 1) * sizeof(char));
 	if (this->text == NULL) return;
-	
-	strcpy(this->text, text);
+
+	for (int i = 0; i < textLen; i++) {
+		this->text[i] = text[i];
+	}
+	this->text[textLen] = '\0';
 	textLength = textLen;
 
 }
 
 void Control::setText(wchar_t* text, const int textLen) {
-	
-	char* utf8Buffer = (char*) malloc(3 * textLen * sizeof(char));
+
+	char* utf8Buffer = (char*)malloc(3 * textLen * sizeof(char));
 	if (utf8Buffer == NULL) return;
 
 	const int realLen = Utils::wc2utf8(text, textLen, &utf8Buffer);
-	char* tmp = (char*) realloc(utf8Buffer, realLen * sizeof(char));
+	char* tmp = (char*)realloc(utf8Buffer, realLen * sizeof(char));
 	if (tmp == NULL) {
 		free(utf8Buffer);
 	}
@@ -612,19 +628,22 @@ void Control::setText(wchar_t* text, const int textLen) {
 
 void Control::setBorderTitle(char* text, const int len) {
 
-	this->borderTitleText = (char*) malloc(len * sizeof(char));
+	this->borderTitleText = (char*)malloc((len + 1) * sizeof(char));
 	if (this->borderTitleText == NULL) return;
 
-	strcpy(this->borderTitleText, text);
+	for (int i = 0; i < len; i++) {
+		this->borderTitleText[i] = text[i];
+	}
+	this->borderTitleText[len] = '\0';
 	borderTitleLength = len;
 
 }
 
 void Control::setCursor(int cursor) {
-	
+
 	switch (cursor) {
-	
-	
+
+
 	}
 
 }
@@ -652,9 +671,9 @@ void Control::unselect(int redraw) {
 }
 
 void Control::hide(int redraw) {
-	
+
 	visible = 0;
-	
+
 	if (redraw)
 		Render::redraw();
 
@@ -677,160 +696,160 @@ void Control::toggleSelect() {
 }
 
 int Control::processMessage(
-	ControlEvent::ControlEvent controlEvent, 
-	CTRL_PARAM paramA, 
+	ControlEvent::ControlEvent controlEvent,
+	CTRL_PARAM paramA,
 	CTRL_PARAM paramB
 ) {
 
 	if (!visible) return 0;//goto switchEnd;
 
 	switch (controlEvent) {
-		
-		case ControlEvent::MOUSE_CLICK: {
-			// paramA 
-			//	- hight order word is y coord
-			//	- low order word is x coord
-			// paramB
-			//	- unused
 
-			if (eMouseClick != NULL) {
-				if (!this->visible || !trackAnyClick && !isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) { break; }
-				eMouseClick(this, paramA, paramB);
-				if (!this->passMouseEvents) return PM_PREVENT_EVENT;
-			}
-						
-			break;
+	case ControlEvent::MOUSE_CLICK: {
+		// paramA 
+		//	- hight order word is y coord
+		//	- low order word is x coord
+		// paramB
+		//	- unused
 
+		if (eMouseClick != NULL) {
+			if (!this->visible || !trackAnyClick && !isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) { break; }
+			eMouseClick(this, paramA, paramB);
+			if (!this->passMouseEvents) return PM_PREVENT_EVENT;
 		}
 
-		case ControlEvent::MOUSE_SCROLL: {
-			// paramA 
-			//	- hight order word is y coord
-			//	- low order word is x coord
-			// paramB
-			//	- scroll distance
+		break;
 
-			if (eMouseScroll != NULL) eMouseScroll(this, paramA, paramB);
-		
-			break;
+	}
 
+	case ControlEvent::MOUSE_SCROLL: {
+		// paramA 
+		//	- hight order word is y coord
+		//	- low order word is x coord
+		// paramB
+		//	- scroll distance
+
+		if (eMouseScroll != NULL) eMouseScroll(this, paramA, paramB);
+
+		break;
+
+	}
+
+	case ControlEvent::MOUSE_MOVE: {
+		// paramA 
+		//	- hight order word is y coord
+		//	- low order word is x coord
+		// paramB
+		//	- unused
+
+		const int inBounds = isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA));
+		if (inBounds) System::setCursor(cursor);
+		mouseInBounds = inBounds;
+
+		if (eMouseMove != NULL) eMouseMove(this, paramA, paramB);
+
+		break;
+
+	}
+
+	case ControlEvent::MOUSE_DBL_CLICK: {
+		// paramA 
+		//	- hight order word is y coord
+		//	- low order word is x coord
+		// paramB
+		//	- unused
+
+		if (eMouseDblClick != NULL) {
+			if (!this->visible || !isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) { break; }
+			eMouseDblClick(this, paramA, paramB);
+			if (!this->passMouseEvents) return PM_PREVENT_EVENT;
 		}
 
-		case ControlEvent::MOUSE_MOVE: {
-			// paramA 
-			//	- hight order word is y coord
-			//	- low order word is x coord
-			// paramB
-			//	- unused
+		break;
 
-			const int inBounds = isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA));
-			if (inBounds) System::setCursor(cursor);
-			mouseInBounds = inBounds;
+	}
 
-			if (eMouseMove != NULL) eMouseMove(this, paramA, paramB);
+	case ControlEvent::MOUSE_UP: {
+		// paramA 
+		//	- hight order word is y coord
+		//	- low order word is x coord
+		// paramB
+		//	- unused
 
-			break;
-		
-		}
-		
-		case ControlEvent::MOUSE_DBL_CLICK: {
-			// paramA 
-			//	- hight order word is y coord
-			//	- low order word is x coord
-			// paramB
-			//	- unused
+		if (eMouseUp != NULL) eMouseUp(this, paramA, paramB);
 
-			if (eMouseDblClick != NULL) {
-				if (!this->visible || !isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) { break; }
-				eMouseDblClick(this, paramA, paramB);
-				if (!this->passMouseEvents) return PM_PREVENT_EVENT;
-			}
+		break;
 
-			break;
+	}
 
-		}
+	case ControlEvent::MOUSE_DOWN: {
+		// paramA 
+		//	- hight order word is y coord
+		//	- low order word is x coord
+		// paramB
+		//	- unused
 
-		case ControlEvent::MOUSE_UP: {
-			// paramA 
-			//	- hight order word is y coord
-			//	- low order word is x coord
-			// paramB
-			//	- unused
+		if (eMouseDown != NULL) eMouseDown(this, paramA, paramB);
 
-			if (eMouseUp != NULL) eMouseUp(this, paramA, paramB);
+		break;
 
-			break;
+	}
 
-		}
+	case ControlEvent::DRAG_START: {
 
-		case ControlEvent::MOUSE_DOWN: {
-			// paramA 
-			//	- hight order word is y coord
-			//	- low order word is x coord
-			// paramB
-			//	- unused
+		if (draggable && eDragStart != NULL) eDragStart(this, paramA, paramB);
 
-			if (eMouseDown != NULL) eMouseDown(this, paramA, paramB);
+		break;
 
-			break;
+	}
 
-		}
+	case ControlEvent::DRAG: {
 
-		case ControlEvent::DRAG_START: {
+		if (draggable && eDrag != NULL) eDrag(this, paramA, paramB);
 
-			if (draggable && eDragStart != NULL) eDragStart(this, paramA, paramB);
+		break;
 
-			break;
+	}
 
+	case ControlEvent::DRAG_END: {
+
+		if (draggable && eDragEnd != NULL) eDragEnd(this, paramA, paramB);
+
+		break;
+
+	}
+
+	case ControlEvent::DROP: {
+
+		if (droppable && eDrop != NULL) {
+			if (!isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) { break; }
+			eDrop(this, paramA, paramB);
 		}
 
-		case ControlEvent::DRAG: {
-		
-			if (draggable && eDrag != NULL) eDrag(this, paramA, paramB);
+		break;
 
-			break;
+	}
 
+	case ControlEvent::CHAR_INPUT: {
+
+		if (focused) {
+			eCharInput(this, paramA, paramB);
 		}
 
-		case ControlEvent::DRAG_END: {
+		break;
 
-			if (draggable && eDragEnd != NULL) eDragEnd(this, paramA, paramB);
+	}
 
-			break;
+	default: {
 
-		}
+		break;
 
-		case ControlEvent::DROP: {
-		
-			if (droppable && eDrop != NULL) {
-				if (!isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) { break; }
-				eDrop(this, paramA, paramB);
-			}
+	}
 
-			break;
-
-		}
-
-		case ControlEvent::CHAR_INPUT: {
-
-			if (focused) {
-				eCharInput(this, paramA, paramB);
-			}
-
-			break;
-
-		}
-
-		default: {
-			
-			break;
-
-		}
-	
 	}
 
 	// have to come up with better name
-	switchEnd:
+switchEnd:
 
 	for (int i = 0; i < childrenCount; i++) {
 
@@ -904,7 +923,7 @@ int Control::swapChildrens(const int idA, const int idB) {
 }
 
 int Control::scrollY(const int value) {
-	
+
 	for (int i = 0; i < childrenCount; i++) {
 		childrens[i]->y += value;
 		childrens[i]->scrollY(value);
@@ -926,7 +945,7 @@ int Control::scrollY(const int value, const int fromIdx) {
 }
 
 void Control::focus() {
-	
+
 	if (focusedControl != NULL) {
 		focusedControl->focused = 0;
 	}
@@ -937,19 +956,19 @@ void Control::focus() {
 }
 
 void deleteRecursive(Control* ctrl) {
-	
+
 	const int count = ctrl->childrenCount;
 	for (int i = 0; i < count; i++) {
 		deleteRecursive(ctrl->childrens[i]);
 	}
 
 	ctrl->parent->childrenCount--;
-	free(ctrl);
+	delete ctrl;
 
 }
 
 Control::~Control() {
-	
+
 	/*
 	const int count = childrenCount;
 	for (int i = 0; i < count; i++) {
