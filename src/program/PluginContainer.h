@@ -24,6 +24,7 @@ class PluginContainer : public Control {
 		virtual void draw();
 		virtual int processMessage(ControlEvent::ControlEvent controlEvent, CTRL_PARAM paramA, CTRL_PARAM paramB);
 
+		void setPluginState(int pluginIdx, int state);
 		void setPluginCount(int count);
 		void removeAll();
 
