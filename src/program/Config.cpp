@@ -3,6 +3,8 @@
 #include "Config.h"
 #include <fstream>
 
+#define strdup _strdup
+
 namespace Config {
     
     //
@@ -11,17 +13,24 @@ namespace Config {
     const int PROPERTIES_COUNT = 3;
 
     // client sizes
-    const int DF_WINDOW_WIDTH = 640;
-    const int DF_WINDOW_HEIGHT = 800;
+    const int DF_WINDOW_WIDTH   = 640;
+    const int DF_WINDOW_HEIGHT  = 800;
+
+    const int DF_RENDER_WIDTH   = DF_WINDOW_WIDTH;
+    const int DF_RENDER_HEIGHT  = DF_WINDOW_HEIGHT;
+
+    const int DF_WINDOW_RESIZE      = 0;
+    const int DF_WINDOW_MAXIMIZE    = 0;
+    const int DF_FULL_SCREEN        = 0;
 
     // audio settings
     const AudioDriver::Driver DF_AUDIO_DRIVER = AudioDriver::AD_ASIO;
-    const int DF_AUDIO_DEVICE_ID = 0;
-    const int DF_LEFT_CHANNEL_IN = 1;
-    const int DF_RIGHT_CHANNEL_IN = 0;
-    const int DF_LEFT_CHANNEL_OUT = 1;
-    const int DF_RIGHT_CHANNEL_OUT = 1;
-    const int DF_SAMPLE_RATE = 44100;
+    const int DF_AUDIO_DEVICE_ID    = 0;
+    const int DF_LEFT_CHANNEL_IN    = 1;
+    const int DF_RIGHT_CHANNEL_IN   = 0;
+    const int DF_LEFT_CHANNEL_OUT   = 1;
+    const int DF_RIGHT_CHANNEL_OUT  = 1;
+    const int DF_SAMPLE_RATE        = 44100;
 
     // other
     #define DF_OUT_FILE_NAME "OutFile"
@@ -31,38 +40,53 @@ namespace Config {
     // actual properties values, are set to default as default KEKW
     // 
     
-    int windowWidth = DF_WINDOW_WIDTH;
-    int windowHeight = DF_WINDOW_HEIGHT;
+    int windowWidth     = DF_WINDOW_WIDTH;
+    int windowHeight    = DF_WINDOW_HEIGHT;
+
+    int renderWidth     = DF_RENDER_WIDTH;
+    int renderHeight    = DF_RENDER_HEIGHT;
+
+    int windowResize    = DF_WINDOW_RESIZE;
+    int windowMaximize  = DF_WINDOW_MAXIMIZE;
+    int fullScreen      = DF_FULL_SCREEN;
 
     AudioDriver::Driver audioDriver = DF_AUDIO_DRIVER;
-    int audioDeviceId = DF_AUDIO_DEVICE_ID;
-    int leftChannelIn = DF_LEFT_CHANNEL_IN;
-    int rightChannelIn = DF_RIGHT_CHANNEL_IN;
-    int leftChannelOut = DF_LEFT_CHANNEL_OUT;
+    int audioDeviceId   = DF_AUDIO_DEVICE_ID;
+    int leftChannelIn   = DF_LEFT_CHANNEL_IN;
+    int rightChannelIn  = DF_RIGHT_CHANNEL_IN;
+    int leftChannelOut  = DF_LEFT_CHANNEL_OUT;
     int rightChannelOut = DF_RIGHT_CHANNEL_OUT;
-    int sampleRate = DF_SAMPLE_RATE;
+    int sampleRate      = DF_SAMPLE_RATE;
 
-    char* outFileName = (char*) DF_OUT_FILE_NAME;
-    char* inFileName = (char*) DF_IN_FILE_NAME;
+    char* outFileName   = (char*) DF_OUT_FILE_NAME;
+    char* inFileName    = (char*) DF_IN_FILE_NAME;
 
     // so, each propertie is pre-hashed and written into following enum
     // this solution requaries no collision, so names has to be re-chossen
     // if something like this occures
     enum Properties {
 
-        WINDOW_WIDTH = 688673884,
-        WINDOW_HEIGHT = 659792757,
+        WINDOW_WIDTH        = 688673884,
+        WINDOW_HEIGHT       = 659792757,
 
-        AUDIO_DRIVER = 643383298,
-        AUDIO_DEVICE = 628419270,
-        LEFT_CHANNEL_IN = 2856149054,
-        RIGHT_CHANNEL_IN = 1777780753,
-        LEFT_CHANNEL_OUT = 4058612447,
-        RIGHT_CHANNEL_OUT = 2832196882,
-        SAMPLE_RATE = 3187368306,
+        RENDER_WIDTH        = 1667443684,
+        RENDER_HEIGHT       = 2894425085,
 
-        OUT_FILE_NAME = 3775738460,
-        IN_FILE_NAME = 4142588603,
+        WINDOW_RESIZE       = 1051508814,
+        WINDOW_MAXIMIZE     = 3612261312,
+        FULL_SCREEN         = 1540445015,
+        
+
+        AUDIO_DRIVER        = 643383298,
+        AUDIO_DEVICE        = 628419270,
+        LEFT_CHANNEL_IN     = 2856149054,
+        RIGHT_CHANNEL_IN    = 1777780753,
+        LEFT_CHANNEL_OUT    = 4058612447,
+        RIGHT_CHANNEL_OUT   = 2832196882,
+        SAMPLE_RATE         = 3187368306,
+
+        OUT_FILE_NAME       = 3775738460,
+        IN_FILE_NAME        = 4142588603,
 
     };
 
@@ -145,6 +169,31 @@ namespace Config {
                     setWindowHeight(std::stoi(propertieValue));
                     break;
 
+                case RENDER_WIDTH:
+
+                    setRenderWidth(std::stoi(propertieValue));
+                    break;
+
+                case RENDER_HEIGHT:
+
+                    setRenderHeight(std::stoi(propertieValue));
+                    break;
+
+                case WINDOW_RESIZE:
+
+                    setWindowResize(std::stoi(propertieValue));
+                    break;
+
+                case WINDOW_MAXIMIZE:
+
+                    setWindowMaximize(std::stoi(propertieValue));
+                    break;
+
+                case FULL_SCREEN:
+
+                    setWindowFullScreen(std::stoi(propertieValue));
+                    break;
+
                 case AUDIO_DRIVER:
 
                     setAudioDriver((AudioDriver::Driver) std::stoi(propertieValue));
@@ -209,6 +258,42 @@ namespace Config {
     void setWindowHeight(int height) {
 
         windowHeight = (height >= 0) ? height : 0;
+
+    }
+
+    void setRenderWidth(int width) {
+
+        renderWidth = (width >= 0) ? width : 0;
+
+    }
+
+    void setRenderHeight(int height) {
+
+        renderHeight = (height >= 0) ? height : 0;
+
+    }
+
+    void setWindowResize(int resize) {
+
+        if (resize > 1) windowResize = 1;
+        else if (resize < 0) windowResize = 0;
+        else windowResize = resize;
+
+    }
+
+    void setWindowMaximize(int maximize) {
+
+        if (maximize > 1) windowMaximize = 1;
+        else if (maximize < 0) windowMaximize = 0;
+        else windowMaximize = maximize;
+
+    }
+
+    void setWindowFullScreen(int full) {
+
+        if (full > 1) fullScreen = 1;
+        else if (full < 0) fullScreen = 0;
+        else fullScreen = fullScreen;
 
     }
 
