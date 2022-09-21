@@ -26,7 +26,7 @@ typedef struct WAVE {
 
 } WAVE;
 
-int WAVEPrepare(WAVE** wave, int len, int sampleRate);
-int WAVEOpenFile(char* flname, WAVE* wave);
+int WAVEPrepare(WAVE** wave, int len, int sampleRate, int channelCount);
+int WAVEOpenFile(char* flname, WAVE** wave);
 int WAVEToFile(char* flname, WAVE* wave);
 void WAVEFree(WAVE* wave);
