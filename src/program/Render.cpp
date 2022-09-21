@@ -23,9 +23,9 @@ namespace Render {
 	static const uint32_t GREEN_MASK	= 0x0000FF00;
 	static const uint32_t RED_BLUE_MASK = 0x00FF00FF;
 
-	static const unsigned int RED_SHIFT = 2 * 8;
-	static const unsigned int GREEN_SHIFT = 1 * 8;
-	static const unsigned int BLUE_SHIFT = 0;
+	static const unsigned int RED_SHIFT		= 2 * 8;
+	static const unsigned int GREEN_SHIFT	= 1 * 8;
+	static const unsigned int BLUE_SHIFT	= 0;
 
 	int renderWidth;
 	int renderHeight;
@@ -107,11 +107,48 @@ namespace Render {
 
 	void render(HDC hdc) {
 
-		int x = 0;
-		int y = 0;
+		StretchDIBits(
+			hdc,
+			0,
+			0,
+			renderWidth,
+			renderHeight,
+			0,
+			0,
+			renderWidth,
+			renderHeight,
+			pixels,
+			&BITMAP_INFO,
+			DIB_RGB_COLORS,
+			SRCCOPY
+		);
 
-		int width = renderWidth;
-		int height = renderHeight;
+	}
+
+	void render(HDC hdc, int width, int height) {
+
+		int x = width;
+		int y = height;
+
+		if (renderHeight * width > renderWidth * height) {
+
+			width = (renderWidth * height) / renderHeight;
+			x = (x - width) / 2;
+			y = 0;
+
+			BitBlt(hdc, 0, 0, x, height, 0, 0, 0, BLACKNESS);
+			BitBlt(hdc, x + width, 0, x, height, 0, 0, 0, BLACKNESS);
+
+		} else {
+
+			height = (renderHeight * width) / renderWidth;
+			y = (y - height) / 2;
+			x = 0;
+
+			BitBlt(hdc, 0, 0, width, y, 0, 0, 0, BLACKNESS);
+			BitBlt(hdc, 0, y + height, width, y, 0, 0, 0, BLACKNESS);
+		
+		}
 
 		StretchDIBits(
 			hdc,
