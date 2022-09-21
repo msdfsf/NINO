@@ -1,5 +1,4 @@
 #pragma once
-
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "PluginState.h"
@@ -14,12 +13,14 @@
 #include "AudioIOLegacy.h"
 #include "AudioIOFile.h"
 
+#include "ErrorCodes.h"
+
 #include "Utils.h"
 
 namespace AudioDriver {
 
-	void processSignals(void* inBuffer, void* outBuffer, int bufferLength);
-	void processSignalsFile(void* inBuffer, void* outBuffer, int bufferLength);
+	int processSignals(void* inBuffer, void* outBuffer, const int bufferLength);
+	int processSignalsLegacy(void* inBuffer, void* outBuffer, const int buffLen);
 
 	DriverInfo info;
 
@@ -32,13 +33,15 @@ namespace AudioDriver {
 
 	IAudioIO* audioIO = NULL;
 
+	double pan = 0.5; // 0 - 1, 1 full right, 0 full left
+
 	void select(Driver driver) {
 	
+		if (audioIO != NULL) delete audioIO;
+
 		switch (driver) {
 
 			case AD_ASIO: {
-
-				if (audioIO != NULL) delete audioIO;
 
 				AudioIOASIO* asio = new AudioIOASIO();
 				audioIO = (IAudioIO*) asio;
@@ -50,8 +53,6 @@ namespace AudioDriver {
 
 			case AD_WASAPI: {
 
-				if (audioIO != NULL) delete audioIO;
-
 				AudioIOWASAPI* wasapi = new AudioIOWASAPI();
 				audioIO = (IAudioIO*) wasapi;
 				audioIO->processInput = &processSignals;
@@ -62,23 +63,19 @@ namespace AudioDriver {
 
 			case AD_LEGACY: {
 
-				if (audioIO != NULL) delete audioIO;
-
 				AudioIOLegacy* legacy = new AudioIOLegacy();
 				audioIO = (IAudioIO*) legacy;
-				audioIO->processInput = &processSignals;
+				audioIO->processInput = &processSignalsLegacy;
 
 				break;
 
 			};
 
 			case AD_FILE: {
-				
-				if (audioIO != NULL) delete audioIO;
 
 				AudioIOFile* file = new AudioIOFile();
 				audioIO = (IAudioIO*) file;
-				audioIO->processInput = &processSignals;
+				audioIO->processInput = &processSignalsLegacy;
 
 				break;
 			
@@ -90,7 +87,34 @@ namespace AudioDriver {
 
 	void init(AudioDriver::DriverInfo* info) {
 
-		audioIO->init(info);
+		// maybe default function in ErrorCodes.h that will switch case all errors with default messages
+		switch (audioIO->init(info)) {
+			
+			case ERR_ALLOC :
+				Utils::showError("Allocation failed!");
+				break;
+
+			case ERR_WHATSOEVER :
+				Utils::showError("Something bad happened! The error is unknown, or programmer was lazy to identify it!");
+				break;
+
+			case ERR_AD_INVALID_INPUT_DEVICE :
+				Utils::showError("Could not initialize input device! Make sure os can do so");
+				break;
+
+			case ERR_AD_INVALID_OUTPUT_DEVICE :
+				Utils::showError("Could not initialize output device! Make sure os can do so!");
+				break;
+
+			case ERR_AD_INVALID_FORMAT :
+				Utils::showError("Something wrong with the audio format! Try to play around with the os settings!");
+				break;
+
+			default :
+				break;
+				// Utils::showError("default state......");
+		
+		}
 
 	}
 
@@ -231,7 +255,7 @@ namespace AudioDriver {
 		
 		if (pluginCount <= 0 || idx < 0 || idx >= maxPluginCount) return;
 
-		// has to be better solution, but lets keep it simple as that for now, as it will work 100%
+		// has to be better solution, but lets keep it simple as that for now
 		// at least I hope so...
 		if (plugins[idx]->free && running && plugins[idx]->state == PluginState::ON) {
 			// plugins[idx]->state = PluginState::TO_BE_DELETED;
@@ -271,30 +295,135 @@ namespace AudioDriver {
 	
 	}
 
-	void processSignals(void* inBuffer, void* outBuffer, int bufferLength) {
-		
-		const int buffCount = pluginCount;
-		const int buffLen = bufferLength;
+	// for now outBuffer has to have two consequence buffers
+	// in put has to be the same packed, but only first buffer considers as inout data (so only mono input)
+	// returns 1 if two out buffers has to be mixed
+	// returns 0 if there is only first buffer filled and has to be passed to both channels
+	int processSignals(void* inBuffer, void* outBuffer, const int buffLen) {
 
-		// firstly we set out buffer by ourself, so we can apply some basic dsp
-		double* const foutBuffer = (double*) outBuffer;
-		double* const fintBuffer = (double*) inBuffer;
+		const int buffCount = pluginCount;
+
+		double* const finBufferL = (double*) inBuffer;
+		double* const finBufferR = ((double*) inBuffer) + buffLen;
+		double* const foutBufferL = (double*) outBuffer;
+		double* const foutBufferR = ((double*) outBuffer) + buffLen;
+
 		for (int i = 0; i < buffLen; i++) {
-			foutBuffer[i] = fintBuffer[i];
+			foutBufferL[i] = foutBufferR[i] = 0;
 		}
 
+		int mix = 0;
 		for (int i = 0; i < buffCount; i++) {
 
 			IPlugin* const plugin = plugins[i];
 			
 			const int state = plugin->state;
-			if (state == PluginState::ON)
-				plugin->process(outBuffer, outBuffer, bufferLength, plugin->space);
+
+			if (state == PluginState::OFF) continue;
+
+			if (!mix && state != PluginState::ON) {
+				for (int i = 0; i < buffLen; i++) {
+					finBufferR[i] = finBufferL[i];
+				}
+			}
+
+			switch (state) {
+
+				case PluginState::ON : {
+					
+					if (mix) {
+
+						const double lRatio = 1 - pan;
+						const double rRatio = pan;
+						
+						for (int i = 0; i < buffLen; i++) {
+							finBufferL[i] = lRatio * foutBufferL[i] + rRatio * foutBufferR[i];
+						}
+					
+					}
+					mix = 0;
+
+					plugin->process((void*) finBufferL, (void*) foutBufferL, buffLen, plugin->space);
+
+					for (int i = 0; i < buffLen; i++) {
+						finBufferL[i] = foutBufferL[i];
+					}
+
+					break;
+
+				}
+
+				case PluginState::ON_LEFT: {
+
+					mix = 1;
+
+					plugin->process((void*) finBufferL, foutBufferL, buffLen, plugin->space);
+
+					for (int i = 0; i < buffLen; i++) {
+						finBufferL[i] = foutBufferL[i];
+					}
+
+					break;
+
+				}
+
+				case PluginState::ON_RIGHT: {
+					
+					mix = 1;
+
+					plugin->process((void*) finBufferR, (void*) foutBufferR, buffLen, plugin->space);
+					
+					for (int i = 0; i < buffLen; i++) {
+						finBufferR[i] = foutBufferR[i];
+					}
+
+					break;
+				}
+			
+			}
+
 			if (state == PluginState::TO_BE_DELETED)
 				plugin->state = PluginState::DELETED;
-		
+
 		}
 	
+		return mix;
+
+	}
+
+	int processSignalsLegacy(void* inBuffer, void* outBuffer, const int buffLen) {
+
+		const int buffCount = pluginCount;
+
+		double* const foutBuffer = (double*) outBuffer;
+		double* const fintBuffer = (double*) inBuffer;
+
+		int noActivePlugin = 1; // there has to be better name
+		for (int i = 0; i < buffCount; i++) {
+
+			IPlugin* const plugin = plugins[i];
+			const int state = plugin->state;
+			
+			if (state > PluginState::OFF && state <= PluginState::ON_RIGHT) {
+				noActivePlugin = 0;
+				plugin->process(inBuffer, outBuffer, buffLen, plugin->space);
+			}
+
+			// maybe unloop or whatever
+			if (i < buffCount - 1)
+				memcpy(inBuffer, outBuffer, buffLen * sizeof(double));
+
+			if (state == PluginState::TO_BE_DELETED)
+				plugin->state = PluginState::DELETED;
+
+		}
+
+		if (noActivePlugin) {
+			memcpy(outBuffer, inBuffer, buffLen * sizeof(double));
+		}
+
+		return 0;
+
 	}
 
 }
