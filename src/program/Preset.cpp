@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "Preset.h"
 #include "Main.h"
@@ -9,6 +10,7 @@
 #include <cstring>
 #include <codecvt>
 #include <unordered_map>
+#include <stdlib.h>
 
 #include "GlobalVars.h"
 
@@ -28,7 +30,7 @@ int processFile(char* filename, Preset** const ppreset) {
 	const int fsize = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
-	char* data = (char*) malloc((fsize + 1) * sizeof(char));
+	char* data = (char*)malloc((fsize + 1) * sizeof(char));
 	fread(data, 1, fsize, file);
 	data[fsize] = '\0';
 	fclose(file);
@@ -75,7 +77,7 @@ int processFile(char* filename, Preset** const ppreset) {
 			}
 
 		}
-		
+
 		int j = offset;
 
 		// plugin name
@@ -173,7 +175,7 @@ int processFile(char* filename, Preset** const ppreset) {
 		offset = j;
 
 		// controls value
-		double* values = (double*) malloc(sizeof(double) * numberOfControls);
+		double* values = (double*)malloc(sizeof(double) * numberOfControls);
 		{
 			int idx = 0;
 			for (; j < i; j++) {
@@ -186,7 +188,7 @@ int processFile(char* filename, Preset** const ppreset) {
 					char* tmp = data + offLeft + offset;
 					tmp[Utils::trimRight(data + offLeft + offset, j - offset - offLeft) + 1] = '\0';
 					values[idx] = strtod(tmp, NULL);
-					
+
 					idx++;
 					if (idx >= numberOfControls) {
 						break;
@@ -205,22 +207,24 @@ int processFile(char* filename, Preset** const ppreset) {
 		IPlugin* plugin = NULL;
 		const int nameCount = pluginsNameMap.count(pluginName);
 		if (nameCount <= 0) {
-			
+
 			free(values);
 			continue;
-		
-		} else if (nameCount > 1) {
+
+		}
+		else if (nameCount > 1) {
 
 			const int folderCount = pluginsFilenameMap.count(pluginFolderName);
 			if (folderCount != 1) {
 
 				free(values);
 				continue;
-			
+
 			}
 			plugin = pluginsFilenameMap.find(pluginFolderName)->second;
-		
-		} else {
+
+		}
+		else {
 
 			plugin = pluginsNameMap.find(pluginName)->second;
 
@@ -246,7 +250,7 @@ int processFile(char* filename, Preset** const ppreset) {
 	}
 
 	preset->nameLen = strlen(presetName);
-	preset->name = (char*) malloc(sizeof(char) * preset->nameLen);
+	preset->name = (char*)malloc(sizeof(char) * (preset->nameLen + 1));
 	if (preset->name == NULL) {
 		free(data);
 		return 1;
@@ -262,17 +266,17 @@ int processFile(char* filename, Preset** const ppreset) {
 
 // returned presets are null terminated
 Preset** Preset::load(wchar_t* dirname) {
-	
+
 	const int count = FileDriver::countAllFilesInDir(dirname, (wchar_t*)PRESET_EXTENSION_WCHAR);
 
-	char** files = (char**) malloc(sizeof(FILE*) * count);
+	char** files = (char**)malloc(sizeof(FILE*) * count);
 	if (files == NULL) return NULL;
 
-	Preset** presets = (Preset**) malloc(sizeof(Preset*) * (count + 1));
+	Preset** presets = (Preset**)malloc(sizeof(Preset*) * (count + 1));
 	if (presets == NULL) return NULL;
 
 	for (int i = 0; i < count; i++) {
-		presets[i] = (Preset*) malloc(sizeof(Preset));
+		presets[i] = (Preset*)malloc(sizeof(Preset));
 		if (presets[i] == NULL) {
 			for (int j = 0; j < i; j++) {
 				free(presets[j]);
@@ -282,7 +286,7 @@ Preset** Preset::load(wchar_t* dirname) {
 
 	}
 
-	FileDriver::getAllFilesInDir(dirname, (wchar_t*) PRESET_EXTENSION_WCHAR, &files, count, "r");
+	FileDriver::getAllFilesInDir(dirname, (wchar_t*)PRESET_EXTENSION_WCHAR, &files, count, "r");
 
 	int j = 0;
 	for (int i = 0; i < count; i++) {
@@ -309,19 +313,21 @@ Preset** Preset::load(wchar_t* dirname) {
 int Preset::addPlugin(IPlugin* const plugin) {
 
 	{
-		IPlugin** tmp = (IPlugin**) realloc(plugins, (pluginCount + 1) * sizeof(IPlugin*));
+		IPlugin** tmp = (IPlugin**)realloc(plugins, (pluginCount + 1) * sizeof(IPlugin*));
 		if (tmp == NULL) {
 			return 1;
-		} else {
+		}
+		else {
 			plugins = tmp;
 		}
 	}
 
 	{
-		Preset::Control* tmp = (Preset::Control*) realloc(controls, (pluginCount + 1) * sizeof(Preset::Control));
+		Preset::Control* tmp = (Preset::Control*)realloc(controls, (pluginCount + 1) * sizeof(Preset::Control));
 		if (tmp == NULL) {
 			return 1;
-		} else {
+		}
+		else {
 			controls = tmp;
 			(controls + pluginCount)->count = 0;
 			(controls + pluginCount)->values = NULL;
@@ -329,7 +335,7 @@ int Preset::addPlugin(IPlugin* const plugin) {
 	}
 
 	{
-		Preset::State* tmp = (Preset::State*) realloc(states, (pluginCount + 1) * sizeof(Preset::State));
+		Preset::State* tmp = (Preset::State*)realloc(states, (pluginCount + 1) * sizeof(Preset::State));
 		if (tmp == NULL) {
 			return 1;
 		}
@@ -338,7 +344,7 @@ int Preset::addPlugin(IPlugin* const plugin) {
 			(states + pluginCount)->state = 0;
 		}
 	}
-	
+
 	plugins[pluginCount] = plugin;
 	pluginCount++;
 
@@ -359,7 +365,7 @@ int Preset::addAndCopyPlugin(IPlugin* const plugin) {
 
 	const int pluginCtrlCount = uihnd->controlCount - 1;
 	ctrls->count = pluginCtrlCount;
-	ctrls->values = (double*) malloc(sizeof(double) * pluginCtrlCount);
+	ctrls->values = (double*)malloc(sizeof(double) * pluginCtrlCount);
 	if (ctrls->values == NULL) {
 		return 2;
 	}
@@ -383,9 +389,9 @@ int Preset::replacePlugins(IPlugin** const plugins, IPlugin** const samplePlugin
 		free((this->controls + i)->values);
 	}
 
-	Preset::Control* const tmp = (Preset::Control*) realloc(this->controls, pluginCount * sizeof(Preset::Control));
-	IPlugin** const tmp2 = (IPlugin**) realloc(this->plugins, pluginCount * sizeof(IPlugin*));
-	Preset::State* const tmp3 = (Preset::State*) realloc(this->states, pluginCount * sizeof(Preset::State));
+	Preset::Control* const tmp = (Preset::Control*)realloc(this->controls, pluginCount * sizeof(Preset::Control));
+	IPlugin** const tmp2 = (IPlugin**)realloc(this->plugins, pluginCount * sizeof(IPlugin*));
+	Preset::State* const tmp3 = (Preset::State*)realloc(this->states, pluginCount * sizeof(Preset::State));
 	if (tmp == NULL || tmp2 == NULL || tmp3 == NULL) {
 		Utils::showError("Cannot save file, malloc error!");
 		return 1;
@@ -397,7 +403,7 @@ int Preset::replacePlugins(IPlugin** const plugins, IPlugin** const samplePlugin
 		PluginControl** const ctls = uihnd->controls;
 		const int ctrlCount = uihnd->controlCount - 1;
 
-		double* const newValues = (double*) realloc((i < oldPluginCount) ? (tmp + i)->values : NULL, ctrlCount * sizeof(double));
+		double* const newValues = (double*)realloc((i < oldPluginCount) ? (tmp + i)->values : NULL, ctrlCount * sizeof(double));
 		if (newValues == NULL) {
 			Utils::showError("Cannot save file, malloc error!");
 			return 2;
@@ -410,7 +416,7 @@ int Preset::replacePlugins(IPlugin** const plugins, IPlugin** const samplePlugin
 		}
 
 		(tmp3 + i)->state = plugins[i]->state;
-		
+
 		tmp2[i] = samplePlugins[i];
 
 	}
@@ -425,7 +431,7 @@ int Preset::replacePlugins(IPlugin** const plugins, IPlugin** const samplePlugin
 
 int Preset::save() {
 
-	char* const tmpFilename = (char*) "tmp";
+	char* const tmpFilename = (char*)"tmp";
 
 	// save to the new tmp file
 	if (saveAs(tmpFilename)) {
@@ -459,7 +465,7 @@ int Preset::saveAs(char* const filename) {
 	const char newLine = '\n';
 	const char delimiter = ':';
 	const char ctrlDelimiter = ',';
-	
+
 	FILE* file = fopen(filename, "w");
 	if (file == NULL) return 1;
 
@@ -481,7 +487,7 @@ int Preset::saveAs(char* const filename) {
 		// name
 		char pluginName[3 * 256 + 1];
 		char* tmp = pluginName;
-		const int pluginNameLen = Utils::wc2utf8((wchar_t*) plugin->name, wcslen(plugin->name), &tmp);
+		const int pluginNameLen = Utils::wc2utf8((wchar_t*)plugin->name, wcslen(plugin->name), &tmp);
 		pluginName[pluginNameLen] = '\0';
 		fwrite(tmp, sizeof(char), pluginNameLen, file);
 		fwrite(&delimiter, sizeof(char), 1, file);
@@ -495,20 +501,20 @@ int Preset::saveAs(char* const filename) {
 		fwrite(&delimiter, sizeof(char), 1, file);
 
 		// on off state
-		
+
 		fprintf(file, "%i:", state->state);
 
 		// controls
-		
+
 		// count
 		fprintf(file, "%i[", ctrlCount);
 
 		// values
-		for (int i = 0; i < ctrlCount - 1; i++) {			
+		for (int i = 0; i < ctrlCount - 1; i++) {
 			fprintf(file, "%.17g,", ctrls->values[i]);
 		}
 		fprintf(file, "%.17g]\n", ctrls->values[ctrlCount - 1]);
-		
+
 	}
 
 	fclose(file);
@@ -518,6 +524,14 @@ int Preset::saveAs(char* const filename) {
 }
 
 Preset::Preset() {
+
+	plugins = NULL;
+	controls = NULL;
+	states = NULL;
+
+	filename = NULL;
+	name = NULL;
+	nameLen = 0;
 
 }
 
