@@ -82,4 +82,3 @@ void Checkbox::setCheckType(CheckType type) {
 	}
 
 }
-
