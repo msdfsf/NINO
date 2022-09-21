@@ -2,6 +2,7 @@
 // http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
 
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "WAVE.h"
 
