@@ -6,6 +6,16 @@
 
 namespace System {
 
+	extern void* windowHandler;
+
 	void setCursor(int cursor);
+
+	void setWindowSize(int width, int height);
+	
+	void blockResize();
+	void allowResize();
+	
+	void blockMaximize();
+	void allowMaximize();
 
 }
