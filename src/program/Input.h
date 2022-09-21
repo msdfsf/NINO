@@ -4,26 +4,26 @@
 
 class Input : public Control {
 
-public:
+	public:
 
-	static const int BUFFER_SIZE = 250;
-	char buffer[BUFFER_SIZE];
+		static const int BUFFER_SIZE = 250;
+		char buffer[BUFFER_SIZE];
 
-	int textCursor; // if cursor is visible
-	int textCursorColor;
-	int textCursorWidth;
+		int textCursor; // if cursor is visible
+		int textCursorColor;
+		int textCursorWidth;
 
-	using Control::Control;
+		using Control::Control;
 
-	Input();
+		Input();
 
-	virtual void draw();
-	void drawCursor();
+		virtual void draw();
+		void drawCursor();
 
-	void input(char ch);
-	void erase();
-	void eraseAll();
+		void input(char ch);
+		void erase();
+		void eraseAll();
 
-private:
+	private:
 
 };
