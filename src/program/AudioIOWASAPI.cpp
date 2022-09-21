@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "AudioIOWASAPI.h"
 
@@ -11,6 +12,7 @@
 #include <mmdeviceapi.h>
 #include "Functiondiscoverykeys_devpkey.h"
 #include "Utils.h"
+#include "ErrorCodes.h"
 
 #pragma comment(lib, "avrt")
 
@@ -52,28 +54,19 @@ AudioIOWASAPI::AudioIOWASAPI() {
 
 };
 
-int AudioIOWASAPI::allocDataBuffers(int count, int length) {
+int AudioIOWASAPI::allocDataBuffers(const int inCount, const int outCount, const int length) {
 
-	dataBuffers = (double**) malloc(count * sizeof(double*));
-	if (dataBuffers == NULL) return 1;
+	const int count = inCount + outCount;
 
-	for (int i = 0; i < count; i++) {
-
-		dataBuffers[i] = (double*) malloc(4 * length * sizeof(double)); // quadro length for double buffering input and output
-		if (dataBuffers[i] == NULL) {
-			for (int j = 0; j < i; j++) {
-				free(dataBuffers[j]);
-			}
-			return 2;
-		}
-
-		for (int j = 0; j < 4 * length; j++) {
-			dataBuffers[i][j] = 0;
-		}
-
+	dataBuffers = (double*) malloc(count * length * sizeof(double));
+	if (dataBuffers == NULL) {
+		dataBufferInCount = 0;
+		dataBufferOutCount = 0;
+		return 1;
 	}
 
-	dataBufferCount = count;
+	dataBufferInCount = inCount;
+	dataBufferOutCount = outCount;
 	dataBufferLength = length;
 
 	return 0;
@@ -82,17 +75,11 @@ int AudioIOWASAPI::allocDataBuffers(int count, int length) {
 
 void AudioIOWASAPI::freeDataBuffers() {
 
-	for (int i = 0; i < dataBufferCount; i++) {
-
-		free(dataBuffers[i]);
-		dataBuffers[i] = NULL;
-
-	}
-
 	free(dataBuffers);
 	dataBuffers = NULL;
 
-	dataBufferCount = 0;
+	dataBufferInCount = 0;
+	dataBufferOutCount = 0;
 	dataBufferLength = 0;
 
 }
@@ -134,7 +121,7 @@ int AudioIOWASAPI::init(AudioDriver::DriverInfo* info) {
 	);
 	
 	if (error != S_OK) {
-		return 1;
+		return ERR_AD_INVALID_INPUT_DEVICE;
 	}
 
 	error = initRender(
@@ -148,16 +135,17 @@ int AudioIOWASAPI::init(AudioDriver::DriverInfo* info) {
 	);
 
 	if (error != S_OK) {
-		return 2;
+		return ERR_AD_INVALID_OUTPUT_DEVICE;
 	}
 
 	// now init our internal buffers
 	const int buffSize = max(rBufferFrameCount, cBufferFrameCount);
-	allocDataBuffers(1, buffSize);
+
+	allocDataBuffers(2, 2, buffSize);
 	driverInfo->maxBufferLength = buffSize;
 
 	initialized = 1;
-	return 0;
+	return ERR_OK;
 
 };
 
@@ -244,12 +232,25 @@ void AudioIOWASAPI::handleIO() {
 	unsigned long taskIndex = 0;
 	//taskHandler = AvSetMmThreadCharacteristicsA("Pro Audio", &taskIndex);
 
+	HANDLE events[2];
+	events[0] = captureEvent;
+	events[1] = renderEvent;
+
 	while (run) {
 
 		UINT32 framesAvailable;
+		
+		WaitForMultipleObjects(
+			2,
+			events,
+			TRUE,
+			INFINITE
+		);
 
-		WaitForSingleObject(captureEvent, INFINITE);
-		if (!SUCCEEDED(captureService->GetBuffer(&inData, &framesAvailable, &flags, NULL, NULL))) {
+		if (
+			!SUCCEEDED(captureService->GetBuffer(&inData, &framesAvailable, &flags, NULL, NULL)) ||
+			!SUCCEEDED(renderService->GetBuffer(framesAvailable, &outData))
+		) {
 			continue;
 		}
 
@@ -260,12 +261,12 @@ void AudioIOWASAPI::handleIO() {
 			// input
 			switch (cFormat) {
 				// assuming that at least one buffer exists
-				// all input will bi summed into one
+				// all input will be summed into one
 
 				case FLOAT_32: {
 
-					double* dataBuffer = dataBuffers[0] + dataBufferLength * (1 - dataBufferIndex);
-					float* const inDataFloat = (float*)inData;
+					double* const dataBuffer = dataBuffers;
+					float* const inDataFloat = (float*) inData;
 
 					if (!leftChannelIn && !rightChannelIn) {
 						for (int i = 0; i < framesAvailable; i++) {
@@ -279,7 +280,7 @@ void AudioIOWASAPI::handleIO() {
 						// only right
 
 						for (int i = 1; i < len; i += 2) {
-							dataBuffer[i / 2] = (double)inDataFloat[i];
+							dataBuffer[i / 2] = (double) inDataFloat[i];
 						}
 
 					}
@@ -287,7 +288,7 @@ void AudioIOWASAPI::handleIO() {
 						// only left
 
 						for (int i = 0; i < len; i += 2) {
-							dataBuffer[i / 2] = (double)inDataFloat[i];
+							dataBuffer[i / 2] = (double) inDataFloat[i];
 						}
 
 					}
@@ -295,7 +296,7 @@ void AudioIOWASAPI::handleIO() {
 						// both
 
 						for (int i = 0; i < len; i += 2) {
-							dataBuffer[i / 2] = (double)inDataFloat[i] + (double)inDataFloat[i + 1];
+							dataBuffer[i / 2] = (double) inDataFloat[i] + (double) inDataFloat[i + 1];
 						}
 
 					}
@@ -308,12 +309,11 @@ void AudioIOWASAPI::handleIO() {
 
 		}
 
-		captureService->ReleaseBuffer(framesAvailable);
+		// process
+		double* const inBuff = dataBuffers;
+		double* const outBuff = dataBuffers + dataBufferInCount * dataBufferLength;
 
-		WaitForSingleObject(renderEvent, INFINITE);
-		if (!SUCCEEDED(renderService->GetBuffer(framesAvailable, &outData))) {
-			continue;
-		}
+		const int mix = processInput((void*) inBuff, (void*) outBuff, framesAvailable);
 
 		// output
 		switch (rFormat) {
@@ -342,7 +342,7 @@ void AudioIOWASAPI::handleIO() {
 
 			case FLOAT_32: {
 
-				float* const outDataFloat = (float*)outData;
+				float* const outDataFloat = (float*) outData;
 
 				if (!leftChannelOut && !rightChannelOut) {
 					for (int i = 0; i < framesAvailable * rChannelCount; i++) {
@@ -352,38 +352,38 @@ void AudioIOWASAPI::handleIO() {
 					break;
 				}
 
-				const int inOffset = dataBufferLength * dataBufferIndex;
-				const int outOffset = inOffset + 2 * dataBufferLength;
-
-				// left
-				const double* inBuffLeft = dataBuffers[0] + inOffset;
-				const double* outBuffLeft = dataBuffers[0] + outOffset;
-
-				processInput((void*)inBuffLeft, (void*)outBuffLeft, framesAvailable);
-
 				if (!leftChannelOut) {
 					// only right
 
+					double* const outBuffL = (mix) ? outBuff + framesAvailable : outBuff;
 					for (int i = 1; i < framesAvailable * rChannelCount; i += 2) {
-						outDataFloat[i] = (outBuffLeft[i / 2]);
+						outDataFloat[i] = outBuffL[i / 2];
 						outDataFloat[i - 1] = 0; // is memset faster?
 					}
 
-				}
-				else if (!rightChannelOut) {
+				} else if (!rightChannelOut) {
 					// only left
 
+					double* const outBuffR = (mix) ? outBuff + framesAvailable : outBuff;
 					for (int i = 0; i < framesAvailable * rChannelCount; i += 2) {
-						outDataFloat[i] = (outBuffLeft[i / 2]);
+						outDataFloat[i] = outBuffR[i / 2];
 						outDataFloat[i + 1] = 0; // is memset faster?
 					}
 
-				}
-				else {
+				} else {
 					// both
 
-					for (int i = 0; i < framesAvailable * rChannelCount; i += 2) {
-						outDataFloat[i] = (outDataFloat[i + 1] = outBuffLeft[i / 2]);
+					if (mix) {
+						double* const outBuffR = outBuff + framesAvailable;
+						for (int i = 0; i < framesAvailable * rChannelCount; i += 2) {
+							const int idx = i / 2;
+							outDataFloat[i] = outBuff[idx];
+							outDataFloat[i + 1] = outBuffR[idx];
+						}
+					} else {
+						for (int i = 0; i < framesAvailable * rChannelCount; i += 2) {
+							outDataFloat[i] = (outDataFloat[i + 1] = outBuff[i / 2]);
+						}
 					}
 
 				}
@@ -402,7 +402,9 @@ void AudioIOWASAPI::handleIO() {
 		}
 
 		dataBufferIndex = !dataBufferIndex;
+
 		renderService->ReleaseBuffer(framesAvailable, 0);
+		captureService->ReleaseBuffer(framesAvailable);
 
 		/*
 		UINT32 framesAvailable;
@@ -822,7 +824,7 @@ HRESULT AudioIOWASAPI::initRender(
 	
 	if (SHARE_MODE == AUDCLNT_SHAREMODE_EXCLUSIVE) {
 		error = getStreamFormat(
-			(WAVEFORMATEXTENSIBLE**)waveFormat,
+			(WAVEFORMATEXTENSIBLE**) waveFormat,
 			sampleRate,
 			bitResolution,
 			channelCount
