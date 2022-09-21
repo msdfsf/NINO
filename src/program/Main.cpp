@@ -28,7 +28,7 @@ std::unordered_map<IPlugin*, std::string> pluginToFilename;
 
 #include "AudioDriver.h"
 
-#include "TimedEventsDriver.h"
+#include "TickEventsDriver.h"
 
 #include "Utils.h"
 
@@ -58,6 +58,8 @@ int deviceCount = 0;
 AudioDriver::Device** devices = NULL;
 
 std::vector<Preset*> presets;
+
+void scaleMouseCoords(POINT* coords);
 
 int loadPlugins(wchar_t* dir, int dirLen);
 void loadPluginsAndInit();
@@ -142,12 +144,17 @@ int APIENTRY wWinMain(
         return 0;
     }
 
+    System::windowHandler = hWnd;
+
     // render initialization
-    Render::init(hWnd, Config::windowWidth, Config::windowHeight);
+    Render::init(hWnd, Config::renderWidth, Config::renderHeight);
 
     // display and paint window for the first time
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
+
+    setResizeType((ResizeType::ResizeType) Config::windowResize);
+
 
     MSG msg;
 
@@ -202,7 +209,7 @@ HWND InitInstance(
 
     target = hInstance;
 
-    DWORD styleFlags = WS_OVERLAPPEDWINDOW ^ WS_SIZEBOX;
+    DWORD styleFlags = Config::windowResize ? WS_OVERLAPPEDWINDOW : WS_OVERLAPPEDWINDOW ^ WS_SIZEBOX;
     RECT winRect = { 0, 0, Config::windowWidth, Config::windowHeight };
 
     if (AdjustWindowRectEx(&winRect, styleFlags, 0, WS_EX_CLIENTEDGE) == 0) {
@@ -230,8 +237,28 @@ HWND InitInstance(
         NULL
     );
 
+    HANDLE icon = LoadImage(0, L"./icon.ico", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
+    if (icon) {
+        SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) icon);
+        SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM) icon);
+
+        SendMessage(GetWindow(hWnd, GW_OWNER), WM_SETICON, ICON_SMALL, (LPARAM) icon);
+        SendMessage(GetWindow(hWnd, GW_OWNER), WM_SETICON, ICON_BIG, (LPARAM) icon);
+    }
+
     return hWnd;
 
+}
+
+
+#define SCALE_MOUSE_COORDS \
+if (window->resizeType == ResizeType::SCALE) {\
+    POINT mouseCoords = {\
+        GET_LOW_ORDER_WORD(lParam),\
+        GET_HIGH_ORDER_WORD(lParam)\
+    };\
+    scaleMouseCoords(&mouseCoords);\
+    lParam = SET_WORD(mouseCoords.y, mouseCoords.x);\
 }
 
 //
@@ -265,16 +292,34 @@ LRESULT CALLBACK WndProc(
 
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
-            
 
             window->draw();
 
-            Render::render(hdc);
+            const ResizeType::ResizeType resizeType = window->resizeType;
+            if (resizeType == ResizeType::NONE) {
+                Render::render(hdc);
+            } else if (resizeType == ResizeType::SCALE) {
+                Render::render(hdc, Config::windowWidth, Config::windowHeight);
+            }
 
             EndPaint(hwnd, &ps);
 
             break;
 
+        }
+
+        case WM_SIZE: {
+            
+            UINT width = LOWORD(lParam);
+            UINT height = HIWORD(lParam);
+
+            Config::windowWidth = width;
+            Config::windowHeight = height;
+
+            RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE);
+
+            break;
+        
         }
 
         case WM_LBUTTONDOWN: {
@@ -283,6 +328,8 @@ LRESULT CALLBACK WndProc(
             isLeftMouseButtonDown = 1;
             
             SetCapture(hwnd);
+
+            SCALE_MOUSE_COORDS;
             window->processMessage(ControlEvent::MOUSE_DOWN, lParam, NULL);
 
             break;
@@ -294,18 +341,23 @@ LRESULT CALLBACK WndProc(
             if (isLeftMouseButtonDown) {
                 // click
 
+                SCALE_MOUSE_COORDS;
                 window->processMessage(ControlEvent::MOUSE_CLICK, lParam, NULL);
 
             }
 
             if (isAnythingDragged) {
+
+                SCALE_MOUSE_COORDS;
                 window->processMessage(ControlEvent::DRAG_END, lParam, wParam);
                 window->processMessage(ControlEvent::DROP, lParam, wParam);
                 isAnythingDragged = 0;
+            
             }
             
             isLeftMouseButtonDown = 0;
 
+            SCALE_MOUSE_COORDS;
             window->processMessage(ControlEvent::MOUSE_UP, lParam, NULL);
 
             ReleaseCapture();
@@ -316,6 +368,7 @@ LRESULT CALLBACK WndProc(
 
         case WM_MOUSEWHEEL: {
 
+            SCALE_MOUSE_COORDS;
             window->processMessage(ControlEvent::MOUSE_SCROLL, lParam, GET_HIGH_ORDER_WORD(wParam));
 
             break;
@@ -324,8 +377,11 @@ LRESULT CALLBACK WndProc(
 
         case WM_MOUSEMOVE: {
 
+            SCALE_MOUSE_COORDS;
+
             if (isAnythingDragged) {
 
+                //SCALE_MOUSE_COORDS;
                 window->processMessage(ControlEvent::DRAG, lParam, wParam);
 
             } else {
@@ -344,6 +400,7 @@ LRESULT CALLBACK WndProc(
                     ) {
 
                         isAnythingDragged = 1;
+                        //SCALE_MOUSE_COORDS;
                         window->processMessage(ControlEvent::DRAG_START, lParam, wParam);
                         
                         //break;
@@ -354,6 +411,7 @@ LRESULT CALLBACK WndProc(
 
             }
 
+            //SCALE_MOUSE_COORDS;
             window->processMessage(ControlEvent::MOUSE_MOVE, lParam, wParam);
 
             break;
@@ -362,7 +420,9 @@ LRESULT CALLBACK WndProc(
 
         case WM_LBUTTONDBLCLK: {
             
+            SCALE_MOUSE_COORDS;
             window->processMessage(ControlEvent::MOUSE_DBL_CLICK, lParam, wParam);
+            
             break;
         
         }
@@ -370,15 +430,15 @@ LRESULT CALLBACK WndProc(
         case WM_CHAR: {
 
             //if (GetKeyState(VK_BACK) & 0x8000) return;
-
             window->processMessage(ControlEvent::CHAR_INPUT, wParam, lParam);
+            
             break;
 
         }
 
         case WM_DESTROY: {
             
-            TimedEventsDriver::terminate();
+            TickEventsDriver::terminate();
             AudioDriver::exit();
             PostQuitMessage(0);
             break;
@@ -394,6 +454,27 @@ LRESULT CALLBACK WndProc(
     }
     
     return 0;
+
+}
+
+void scaleMouseCoords(POINT* coords) {
+
+    if (Render::renderHeight * Config::windowWidth > Render::renderWidth * Config::windowHeight) {
+
+        int wd = (Render::renderWidth * Config::windowHeight) / Render::renderHeight;
+        int x = (Config::windowWidth - wd) / 2;
+        coords->x = ((Render::renderWidth * (coords->x - x)) / wd);
+        coords->y = (coords->y * Render::renderHeight) / Config::windowHeight;
+
+    }
+    else {
+
+        int hg = (Render::renderHeight * Config::windowWidth) / Render::renderWidth;
+        int y = (Config::windowHeight - hg) / 2;
+        coords->y = y + ((Render::renderHeight * (coords->y - y)) / hg);
+        coords->x = (coords->x * Render::renderWidth) / Config::windowWidth;
+
+    }
 
 }
 
@@ -487,11 +568,21 @@ int loadPlugins(wchar_t* dir, int dirLen) {
 void loadPluginsAndInit() {
 
     // load plugins from dll files to the global variable std::vector plugins
-    loadPlugins((wchar_t*)PLUGINS_FOLDER, sizeof(PLUGINS_FOLDER) / sizeof(wchar_t));
+    const int err = loadPlugins((wchar_t*)PLUGINS_FOLDER, sizeof(PLUGINS_FOLDER) / sizeof(wchar_t));
+    if (err) {
+        // use enum later
+        switch (err) {
+        case 1: Utils::showError("Malloc did not feel well today..."); return;
+        case 2: return;
+        case 3: Utils::showError("Could not load DLL..."); return;
+        case 4: Utils::showError("Could not locate the function..."); return;
+        default: return;
+        }
+    }
 
     // add plugins to the plugin list
     const int pluginCount = plugins.size();
-    char** items = (char**)malloc(sizeof(char*) * pluginCount);
+    char** items = (char**) malloc(sizeof(char*) * pluginCount);
     for (int i = 0; i < pluginCount; i++) {
 
         const int strLen = wcslen(plugins[i]->name);
@@ -520,6 +611,7 @@ void loadPluginsAndInit() {
     pluginSelectMenu->addItems(items, pluginCount);
     pluginSelectMenu->setItemHeight();
 
-    free(items);
+    // dont think free is what we want
+    //free(items);
 
 }
