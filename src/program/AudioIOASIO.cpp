@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "AudioIOASIO.h"
 
@@ -9,6 +10,7 @@
 #include "ASIO/asiosys.h"
 #include "ASIO/asio.h"
 #include "ASIO/asiodrivers.h"
+#include <cstdint>
 
 #pragma comment(lib, "winmm")
 
@@ -17,6 +19,13 @@
 
 #define MAX_IN_BUFFERS 2
 #define MAX_OUT_BUFFERS 2
+
+#define BASIC_CLIP(in, out, m){\
+	const double val = (in);\
+	if (val >= 1) { out = (m); }\
+	else if (val <= -1) { out = -(m); }\
+	else { out = val * (m); }\
+}
 
 // number of input and outputs supported by the host application
 enum {
@@ -80,7 +89,7 @@ ASIOCallbacks asioCallbacks;
 int initialized = 0;
 
 // meh, but anyways
-void (*process) (void* inBuffer, void* outBuffer, int bufferLength);
+int (*process) (void* inBuffer, void* outBuffer, int bufferLength);
 
 int leftChannelIn = 0;
 int rightChannelIn = 0;
@@ -88,11 +97,13 @@ int leftChannelOut = 0;
 int rightChannelOut = 0;
 
 // buffers to store input data
-double** dataBuffers = NULL;
-int dataBufferCount = 0;
+// [ [in buff 1] [in buff 2] ... [in buff n] [out buff 1] [out buff 2] ... [out buff m] ]
+double* dataBuffers = NULL;
+int dataBufferInCount = 0;
+int dataBufferOutCount = 0;
 int dataBufferLength = 0;
 
-int allocDataBuffers(int count, int length);
+int allocDataBuffers(const int inCount, const int outCount, int length);
 void freeASIO(AudioIOASIO* asio);
 
 //----------------------------------------------------------------------------------
@@ -164,7 +175,7 @@ int AudioIOASIO::init(AudioDriver::DriverInfo* info) {
 		asioCallbacks.bufferSwitchTimeInfo = &bufferSwitchTimeInfo;
 
 		// alloc internal data buffers to store and process asio input
-		if (allocDataBuffers(1, asioDriverInfo.preferredSize)) {
+		if (allocDataBuffers(2, 2, asioDriverInfo.preferredSize)) {
 			ASIOExit();
 			return 3;
 		}
@@ -271,44 +282,30 @@ AudioIOASIO::~AudioIOASIO() {
 
 void freeASIO(AudioIOASIO* asio) {
 
-	// free buffers
-	if (dataBufferCount > 0) {
-
-		for (int i = 0; i < dataBufferCount; i++) {
-			free(dataBuffers[i]);
-		}
+	if (dataBufferInCount + dataBufferOutCount > 0) {
 		free(dataBuffers);
-
-		dataBufferCount = 0;
 	}
 
-	dataBufferCount = 0;
+	dataBufferLength = 0;
+	dataBufferInCount = 0;
+	dataBufferOutCount = 0;
 
 }
 
 // all needed variables are in global space
-int allocDataBuffers(int count, int length) {
+int allocDataBuffers(const int inCount, const int outCount, const int length) {
 
-	dataBuffers = (double**) malloc(count * sizeof(double*));
-	if (dataBuffers == NULL) return 1;
+	const int count = inCount + outCount;
 
-	for (int i = 0; i < count; i++) {
-
-		dataBuffers[i] = (double*) malloc(4 * length * sizeof(double)); // quadro length for double buffering input and output
-		if (dataBuffers[i] == NULL) {
-			for (int j = 0; j < i; j++) {
-				free(dataBuffers[j]);
-			}
-			return 2;
-		}
-
-		for (int j = 0; j < 2 * length; j++) {
-			dataBuffers[i][j] = 0;
-		}
-
+	dataBuffers = (double*) malloc(count * length * sizeof(double)); // 2 for double buffering
+	if (dataBuffers == NULL) {
+		dataBufferInCount = 0;
+		dataBufferOutCount = 0;
+		return 1;
 	}
 
-	dataBufferCount = count;
+	dataBufferInCount = inCount;
+	dataBufferOutCount = outCount;
 	dataBufferLength = length;
 
 	return 0;
@@ -316,38 +313,29 @@ int allocDataBuffers(int count, int length) {
 }
 
 //----------------------------------------------------------------------------------
-long init_asio_static_data(DriverInfo* asioDriverInfo)
-{	// collect the informational data of the driver
+long init_asio_static_data(DriverInfo* asioDriverInfo) {	
+	// collect the informational data of the driver
 	// get the number of available channels
-	if (ASIOGetChannels(&asioDriverInfo->inputChannels, &asioDriverInfo->outputChannels) == ASE_OK)
-	{
-		printf("ASIOGetChannels (inputs: %d, outputs: %d);\n", asioDriverInfo->inputChannels, asioDriverInfo->outputChannels);
+	if (ASIOGetChannels(&asioDriverInfo->inputChannels, &asioDriverInfo->outputChannels) == ASE_OK) {
 
 		// get the usable buffer sizes
-		if (ASIOGetBufferSize(&asioDriverInfo->minSize, &asioDriverInfo->maxSize, &asioDriverInfo->preferredSize, &asioDriverInfo->granularity) == ASE_OK)
-		{
-			printf("ASIOGetBufferSize (min: %d, max: %d, preferred: %d, granularity: %d);\n",
-				asioDriverInfo->minSize, asioDriverInfo->maxSize,
-				asioDriverInfo->preferredSize, asioDriverInfo->granularity);
+		if (ASIOGetBufferSize(&asioDriverInfo->minSize, &asioDriverInfo->maxSize, &asioDriverInfo->preferredSize, &asioDriverInfo->granularity) == ASE_OK) {
 
 			// get the currently selected sample rate
-			if (ASIOGetSampleRate(&asioDriverInfo->sampleRate) == ASE_OK)
-			{
-				printf("ASIOGetSampleRate (sampleRate: %f);\n", asioDriverInfo->sampleRate);
-				if (asioDriverInfo->sampleRate <= 0.0 || asioDriverInfo->sampleRate > 96000.0)
-				{
+			if (ASIOGetSampleRate(&asioDriverInfo->sampleRate) == ASE_OK) {
+
+				if (asioDriverInfo->sampleRate <= 0.0 || asioDriverInfo->sampleRate > 96000.0) {
 					// Driver does not store it's internal sample rate, so set it to a know one.
 					// Usually you should check beforehand, that the selected sample rate is valid
 					// with ASIOCanSampleRate().
-					if (ASIOSetSampleRate(44100.0) == ASE_OK)
-					{
+					if (ASIOSetSampleRate(44100.0) == ASE_OK) {
 						if (ASIOGetSampleRate(&asioDriverInfo->sampleRate) == ASE_OK)
 							printf("ASIOGetSampleRate (sampleRate: %f);\n", asioDriverInfo->sampleRate);
 						else
 							return -6;
-					}
-					else
+					} else {
 						return -5;
+					}
 				}
 
 				// check wether the driver requires the ASIOOutputReady() optimization
@@ -359,12 +347,19 @@ long init_asio_static_data(DriverInfo* asioDriverInfo)
 				printf("ASIOOutputReady(); - %s\n", asioDriverInfo->postOutput ? "Supported" : "Not supported");
 
 				return 0;
+			
 			}
+			
 			return -3;
+		
 		}
+
 		return -2;
+	
 	}
+
 	return -1;
+
 }
 
 
@@ -418,7 +413,7 @@ ASIOTime* bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processN
 	// get input
 	int i = 0;
 	int wasAssigned = 0;
-	double* const dataBuffer = dataBuffers[0] + dataBufferLength * (1 - index);
+	double* const dataBuffer = dataBuffers;// = dataBuffers + dataBufferLength * (1 - index);
 	for (i = 0; i < inBuffCount; i++) {
 
 		switch (asioDriverInfo.channelInfos[i].type) {
@@ -457,14 +452,12 @@ ASIOTime* bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processN
 	}
 
 	// process
-	const int buffNum = (i - asioDriverInfo.inputBuffers >= dataBufferCount) ? dataBufferCount : i - asioDriverInfo.inputBuffers;
-	const int inOffset = dataBufferLength * index;
-	const int outOffset = inOffset + 2 * dataBufferLength;
+	// const int outOffset = inOffset + (dataBufferInCount * 2) * dataBufferLength;
 
-	const double* inBuff = dataBuffers[buffNum] + inOffset;
-	const double* outBuff = dataBuffers[buffNum] + outOffset;
+	double* const inBuff = dataBuffer;
+	double* const outBuff = dataBuffer + dataBufferInCount * dataBufferLength;
 
-	process((void*)inBuff, (void*)outBuff, dataBufferLength);
+	const int mix = process((void*) inBuff, (void*) outBuff, dataBufferLength);
 
 	// pass to output
 	int computedIdx = -1;
@@ -490,7 +483,7 @@ ASIOTime* bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processN
 
 			case ASIOSTInt32LSB: {
 
-				int* const outBuffer = (int*) (asioDriverInfo.bufferInfos[i].buffers[index]);
+				int32_t* const outBuffer = (int*) (asioDriverInfo.bufferInfos[i].buffers[index]);
 
 				if ((i == inBuffCount && !leftChannelOut) || (i == inBuffCount + 1 && !rightChannelOut)) {
 					
@@ -501,24 +494,20 @@ ASIOTime* bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processN
 
 				if (computedIdx >= 0) {
 
-					int* const outBufferComputed = (int*) (asioDriverInfo.bufferInfos[computedIdx].buffers[index]);
-					memcpy(outBuffer, outBufferComputed, 4 * buffSize);
+					int32_t* const outBufferComputed = (int*) (asioDriverInfo.bufferInfos[computedIdx].buffers[index]);
+					if (mix) {
+						double* const buff = outBuff + dataBufferLength;
+						for (int j = 0; j < buffSize; j++) {
+							BASIC_CLIP(buff[j], outBuffer[j], INT_MAX);
+						}
+					} else {
+						memcpy(outBuffer, outBufferComputed, 4 * buffSize);
+					}
 				
 				} else {
 				
 					for (int j = 0; j < buffSize; j++) {
-
-						const double val = outBuff[j];
-						
-						if (val >= 1) {
-							outBuffer[j] = INT_MAX;
-						} else if (val <= -1) {
-							outBuffer[j] = -INT_MAX;
-						} else {
-							outBuffer[j] = val * INT_MAX;
-						}
-						// outBuffer[j] = (int) ((outBuff[j]) * (double) INT_MAX);
-					
+						BASIC_CLIP(outBuff[j], outBuffer[j], INT_MAX);
 					}
 
 					computedIdx = i;
