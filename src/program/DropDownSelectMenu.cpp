@@ -7,16 +7,30 @@
 #include "Main.h"
 #include "OverflowType.h"
 #include "Cursor.h"
+#include "Window.h"
+#include "CallbackEvent.h"
 
 void selectMenuMouseClickCallback(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
 void mouseClickCallbackWrapper(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB);
+
+void DropDownSelectMenuHideCallback(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
+
+	if (!((DropDownSelectMenu*)source)->selectMenu->isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) {
+
+		((DropDownSelectMenu*)source)->opened = 0;
+		((DropDownSelectMenu*)source)->selectMenu->visible = 0;
+
+	}
+
+
+}
 
 DropDownSelectMenu::DropDownSelectMenu() {
 
 	trackAnyClick = 1;
 	opened = 0;
 	selected = -1;
-	
+
 	cursor = Cursor::POINTER;
 
 	selectMenu = new SelectMenu();
@@ -28,6 +42,7 @@ DropDownSelectMenu::DropDownSelectMenu() {
 	selectMenu->hoverFrontColor = MAIN_BACK_COLOR;
 	selectMenu->hoverBackColor = MAIN_HIGHLIGHT_COLOR;
 
+	((Window*)window)->addEventCallback(CallbackEvent::MOUSE_CLICK, &DropDownSelectMenuHideCallback, this);
 }
 
 DropDownSelectMenu::DropDownSelectMenu(char** items, int itemCount) {
@@ -61,6 +76,8 @@ DropDownSelectMenu::DropDownSelectMenu(char** items, int itemCount) {
 	selectMenu->eMouseClick = &selectMenuMouseClickCallback;
 	eMouseClick = &mouseClickCallbackWrapper;
 
+	((Window*)window)->addEventCallback(CallbackEvent::MOUSE_CLICK, &DropDownSelectMenuHideCallback, this);
+
 }
 
 void DropDownSelectMenu::draw() {
@@ -72,7 +89,7 @@ void DropDownSelectMenu::draw() {
 	selectMenu->y = this->y + this->height;
 	selectMenu->x = this->x;
 	selectMenu->width = this->width;
-	
+
 	//selectMenu->setItemHeight();
 
 	//const int idealHeight = selectMenu->getIdealHeight();
@@ -83,17 +100,18 @@ void DropDownSelectMenu::draw() {
 }
 
 void DropDownSelectMenu::mouseClickCallback(CTRL_PARAM paramA, CTRL_PARAM paramB) {
-	
+
 	if (isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) {
-		
+
 		opened = !opened;
 		selectMenu->visible = opened;
-	
-	} else if (!selectMenu->isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) {
+
+	}
+	else if (!selectMenu->isInBounds(GET_LOW_ORDER_WORD(paramA), GET_HIGH_ORDER_WORD(paramA))) {
 
 		opened = 0;
 		selectMenu->visible = 0;
-	
+
 	}
 
 	Render::redraw();
@@ -124,13 +142,12 @@ void DropDownSelectMenu::selectOption(int idx) {
 	opened = 0;
 	selectMenu->visible = 0;
 
-	char* newText;
 	if (idx != selected) {
-		
+
 		int newTextLength = 0;
 		char* newText = selectMenu->getItem(idx, &newTextLength);
 		if (newText != NULL) {
-			
+
 			selected = idx;
 			text = newText;
 			textLength = newTextLength;
@@ -139,7 +156,7 @@ void DropDownSelectMenu::selectOption(int idx) {
 				eChange(this, idx, 0);
 
 		}
-	
+
 	}
 
 	Render::redraw();
@@ -148,9 +165,9 @@ void DropDownSelectMenu::selectOption(int idx) {
 
 void selectMenuMouseClickCallback(Control* source, CTRL_PARAM paramA, CTRL_PARAM paramB) {
 
-	SelectMenu* const src = (SelectMenu*) source;
+	SelectMenu* const src = (SelectMenu*)source;
 	DropDownSelectMenu* const menu = (DropDownSelectMenu*)src->parent;
-	
+
 	menu->selectOption(src->hoverIdx);
 
 }
